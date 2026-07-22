@@ -1,3 +1,12 @@
+"""
+Модуль представлений (Views) для приложения Aurora.
+
+Обеспечивает бизнес-логику и обработку HTTP-запросов для API:
+- Управление курсами (Course) реализовано через комплексный ModelViewSet.
+- Управление уроками (Lesson) разделено по отдельным классам Generic Views
+  для гибкой настройки каждой CRUD-операции.
+"""
+
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView, UpdateAPIView, DestroyAPIView
 
