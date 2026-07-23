@@ -8,7 +8,13 @@
 """
 
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView, UpdateAPIView, DestroyAPIView
+from rest_framework.generics import (
+    CreateAPIView,
+    ListAPIView,
+    RetrieveAPIView,
+    UpdateAPIView,
+    DestroyAPIView,
+)
 
 from aurora.models import Lesson, Course
 from aurora.serializers import LessonSerializer, CourseSerializer

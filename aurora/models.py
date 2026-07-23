@@ -88,11 +88,7 @@ class Lesson(models.Model):
         help_text="Введите описание урока",
     )
     course = models.ForeignKey(
-        Course,
-        on_delete=models.CASCADE,
-        blank=False,
-        null=False,
-        verbose_name="Курс"
+        Course, on_delete=models.CASCADE, blank=False, null=False, verbose_name="Курс"
     )
     is_archived = models.BooleanField(
         default=False,

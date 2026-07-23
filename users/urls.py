@@ -13,5 +13,5 @@ from users.views import CustomUserUpdateAPIView
 app_name = UsersConfig.name
 
 urlpatterns = [
-    path('users/update/', CustomUserUpdateAPIView.as_view(), name='user_update'),
+    path("update/", CustomUserUpdateAPIView.as_view(), name="user_update"),
 ]

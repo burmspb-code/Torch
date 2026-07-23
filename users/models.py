@@ -71,7 +71,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     )
     is_active = models.BooleanField(default=True, verbose_name="Активен")
     is_staff = models.BooleanField(default=False, verbose_name="Статус персонала")
-    data_joined = models.DateTimeField(
+    date_joined = models.DateTimeField(
         auto_now_add=True, verbose_name="Дата регистрации"
     )
 
