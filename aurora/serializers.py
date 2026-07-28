@@ -13,6 +13,7 @@ from aurora.models import Lesson, Course
 
 class LessonBulkCreateListSerializer(serializers.ListSerializer):
     """Кастомный класс для обработки списка при массовом создании."""
+
     def create(self, validated_data):
         """
         Выполняет массовое создание уроков одним SQL-запросом.
@@ -26,6 +27,7 @@ class LessonBulkCreateListSerializer(serializers.ListSerializer):
 
 class LessonSerializer(serializers.ModelSerializer):
     """Сериализатор урока."""
+
     class Meta:
         """Конфигурация полей сериализатора."""
 
@@ -36,13 +38,34 @@ class LessonSerializer(serializers.ModelSerializer):
         list_serializer_class = LessonBulkCreateListSerializer
 
 
+# ==================== Раскомментирую после сдачи ДЗ ======================================================
+# class CourseSerializer(serializers.ModelSerializer):
+#     """Сериализатор курса, включающий агрегированные данные о количестве уроков."""
+#
+#     # Просто указываем поле как IntegerField, Django сам возьмет его из annotate
+#     quantity_lessons = serializers.IntegerField(read_only=True)
+#
+#     class Meta:
+#         """Конфигурация полей сериализатора."""
+#         model = Course
+#         fields = ("id", "title", "preview", "description", "is_archived", "author", "quantity_lessons")
+# ===================== Код ниже удалить (закоментировать) =================================================
+
 class CourseSerializer(serializers.ModelSerializer):
     """Сериализатор курса, включающий агрегированные данные о количестве уроков."""
 
-    # Просто указываем поле как IntegerField, Django сам возьмет его из annotate
-    quantity_lessons = serializers.IntegerField(read_only=True)
+    # Поле автоматически ищет метод get_quantity_lessons
+    quantity_lessons = serializers.SerializerMethodField()
 
     class Meta:
         """Конфигурация полей сериализатора."""
         model = Course
         fields = ("id", "title", "preview", "description", "is_archived", "author", "quantity_lessons")
+
+    def get_quantity_lessons(self, obj):
+        """Возвращает количество уроков для курса."""
+        if hasattr(obj, "quantity_lessons"):
+            return obj.quantity_lessons
+
+        # Если анотации нет (сериализатор используется в другой логике) делаем запрос к БД
+        return obj.lessons.count()
