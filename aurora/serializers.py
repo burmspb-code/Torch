@@ -45,6 +45,9 @@ class LessonSerializer(serializers.ModelSerializer):
 #     # Просто указываем поле как IntegerField, Django сам возьмет его из annotate
 #     quantity_lessons = serializers.IntegerField(read_only=True)
 #
+#     # Для информации об уроках используем готовый сериализатор
+#     lesson_information = LessonSerializer(source="lessons", many=True, read_only=True)
+#
 #     class Meta:
 #         """Конфигурация полей сериализатора."""
 #         model = Course
@@ -54,13 +57,17 @@ class LessonSerializer(serializers.ModelSerializer):
 class CourseSerializer(serializers.ModelSerializer):
     """Сериализатор курса, включающий агрегированные данные о количестве уроков."""
 
-    # Поле автоматически ищет метод get_quantity_lessons
+    # Для количества уроков поле автоматически ищет метод get_quantity_lessons
     quantity_lessons = serializers.SerializerMethodField()
+
+    # Для информации об уроках используем готовый сериализатор
+    lesson_information = LessonSerializer(source="lessons", many=True, read_only=True)
+
 
     class Meta:
         """Конфигурация полей сериализатора."""
         model = Course
-        fields = ("id", "title", "preview", "description", "is_archived", "author", "quantity_lessons")
+        fields = ("id", "title", "preview", "description", "is_archived", "author", "quantity_lessons", "lesson_information")
 
     def get_quantity_lessons(self, obj):
         """Возвращает количество уроков для курса."""
@@ -69,3 +76,4 @@ class CourseSerializer(serializers.ModelSerializer):
 
         # Если анотации нет (сериализатор используется в другой логике) делаем запрос к БД
         return obj.lessons.count()
+
