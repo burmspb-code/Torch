@@ -5,16 +5,16 @@
 персональных данных пользователей системы.
 """
 
-from rest_framework.generics import UpdateAPIView
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import update_last_login
 
 from users.serializers import UserSerializer
 
 
-class CustomUserUpdateAPIView(UpdateAPIView):
+class UserProfileAPIView(RetrieveUpdateAPIView):
     """
-    API-представление для безопасного редактирования профиля текущего пользователя.
+    API-представление для просмотра и безопасного редактирования профиля текущего пользователя.
     """
 
     serializer_class = UserSerializer

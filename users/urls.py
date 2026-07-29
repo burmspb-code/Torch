@@ -8,10 +8,11 @@
 from django.urls import path
 
 from users.apps import UsersConfig
-from users.views import CustomUserUpdateAPIView
+from users.views import UserProfileAPIView
 
 app_name = UsersConfig.name
 
 urlpatterns = [
-    path("update/", CustomUserUpdateAPIView.as_view(), name="user_update"),
+    # Маршрут для просмотра и редактирования профиля текущего пользователя
+    path("profile/", UserProfileAPIView.as_view(), name="user_profile"),
 ]
