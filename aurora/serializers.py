@@ -38,7 +38,7 @@ class LessonSerializer(serializers.ModelSerializer):
         list_serializer_class = LessonBulkCreateListSerializer
 
 
-# ==================== Раскомментирую после сдачи ДЗ ======================================================
+# ====================+++++++++++++++++++++++++++++++======================================================
 # class CourseSerializer(serializers.ModelSerializer):
 #     """Сериализатор курса, включающий агрегированные данные о количестве уроков."""
 #
@@ -52,7 +52,7 @@ class LessonSerializer(serializers.ModelSerializer):
 #         """Конфигурация полей сериализатора."""
 #         model = Course
 #         fields = ("id", "title", "preview", "description", "is_archived", "author", "quantity_lessons")
-# ===================== Код ниже удалить (закоментировать) =================================================
+# =====================+++++++++++++++++++++++++++++++++++=================================================
 
 class CourseSerializer(serializers.ModelSerializer):
     """Сериализатор курса, включающий агрегированные данные о количестве уроков."""

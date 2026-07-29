@@ -5,11 +5,12 @@
 персональных данных пользователей системы.
 """
 
-from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import update_last_login
 
-from users.serializers import UserSerializer
+from users.serializers import UserSerializer, PaymentSerializer
+from users.models import Payments
 
 
 class UserProfileAPIView(RetrieveUpdateAPIView):
@@ -30,3 +31,16 @@ class UserProfileAPIView(RetrieveUpdateAPIView):
         super().perform_update(serializer)
         # Вызываем встроенную функцию Django для обновления таймстампа
         update_last_login(None, self.request.user)
+
+class PaymentsListAPIView(ListAPIView):
+    """
+    API-представления для вывода списка платежей текущего пользователя.
+    """
+
+    serializer_class = PaymentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Возвращает все платежи польщователя."""
+        # Оптимизирует запрос, подгружая данные пользователя за один SQL-запрос
+        return Payments.objects.filter(user=self.request.user).select_related('user')
