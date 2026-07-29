@@ -54,6 +54,7 @@ class LessonSerializer(serializers.ModelSerializer):
 #         fields = ("id", "title", "preview", "description", "is_archived", "author", "quantity_lessons")
 # =====================+++++++++++++++++++++++++++++++++++=================================================
 
+
 class CourseSerializer(serializers.ModelSerializer):
     """Сериализатор курса, включающий агрегированные данные о количестве уроков."""
 
@@ -63,11 +64,20 @@ class CourseSerializer(serializers.ModelSerializer):
     # Для информации об уроках используем готовый сериализатор
     lesson_information = LessonSerializer(source="lessons", many=True, read_only=True)
 
-
     class Meta:
         """Конфигурация полей сериализатора."""
+
         model = Course
-        fields = ("id", "title", "preview", "description", "is_archived", "author", "quantity_lessons", "lesson_information")
+        fields = (
+            "id",
+            "title",
+            "preview",
+            "description",
+            "is_archived",
+            "author",
+            "quantity_lessons",
+            "lesson_information",
+        )
 
     def get_quantity_lessons(self, obj):
         """Возвращает количество уроков для курса."""
@@ -76,4 +86,3 @@ class CourseSerializer(serializers.ModelSerializer):
 
         # Если анотации нет (сериализатор используется в другой логике) делаем запрос к БД
         return obj.lessons.count()
-

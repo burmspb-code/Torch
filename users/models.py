@@ -105,13 +105,13 @@ class Payments(models.Model):
     )
     payment_date = models.DateField(
         auto_now_add=True,  # Автоматически ставит текущую дату при создании
-        verbose_name="Дата платежа"
+        verbose_name="Дата платежа",
     )
     paid_course = models.ForeignKey(
         Course,
         on_delete=models.SET_NULL,
-        blank=True, # Может быть пустым, если оплачен отдельный урок
-        null=True, # Обязательно True, так как on_delete=SET_NULL
+        blank=True,  # Может быть пустым, если оплачен отдельный урок
+        null=True,  # Обязательно True, так как on_delete=SET_NULL
         related_name="payments",
         verbose_name="Оплаченный курс",
         help_text="Выберите курс для оплаты",
@@ -119,8 +119,8 @@ class Payments(models.Model):
     paid_lesson = models.ForeignKey(
         Lesson,
         on_delete=models.SET_NULL,
-        blank=True, # Может быть пустым, если оплачен отдельный урок
-        null=True, # Обязательно True, так как on_delete=SET_NULL
+        blank=True,  # Может быть пустым, если оплачен отдельный урок
+        null=True,  # Обязательно True, так как on_delete=SET_NULL
         related_name="payments",
         verbose_name="Оплаченный урок",
         help_text="Выберите урок для оплаты",
@@ -132,7 +132,7 @@ class Payments(models.Model):
         null=False,
         blank=False,
         verbose_name="Сумма оплаты",
-        help_text="Укажите сумму платежа"
+        help_text="Укажите сумму платежа",
     )
     PAYMENT_METHODS: list[tuple[str, str]] = [
         ("cash", "Наличные"),
@@ -147,7 +147,8 @@ class Payments(models.Model):
 
     class Meta:
         """Класс метаданных."""
-        verbose_name="Платеж"
+
+        verbose_name = "Платеж"
         verbose_name_plural = "Платежи"
 
     def __str__(self):

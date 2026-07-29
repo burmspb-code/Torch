@@ -31,8 +31,9 @@ class CourseViewSet(ModelViewSet):
     Оптимизирован для предотвращения проблемы N+1 запросов: количество связанных
     уроков агрегируется на уровне базы данных для всех операций вывода.
     """
+
     # Перенесли annotate сюда — теперь проблема N+1 решена для всех курсов!
-    queryset = Course.objects.annotate(quantity_lessons=Count('lessons'))
+    queryset = Course.objects.annotate(quantity_lessons=Count("lessons"))
     serializer_class = CourseSerializer
 
 
@@ -44,6 +45,7 @@ class LessonCreateAPIView(CreateAPIView):
     Поддерживает как ручное указание ID автора в JSON-запросе, так и автоматическую
     подстановку текущего авторизованного пользователя, если автор не указан.
     """
+
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
 
@@ -59,11 +61,11 @@ class LessonCreateAPIView(CreateAPIView):
         if is_many:
             for lesson_data in serializer.validated_data:
                 # Если автор не передан руками в Postman — подставляем текущего юзера
-                if not lesson_data.get('author'):
-                    lesson_data['author'] = self.request.user
+                if not lesson_data.get("author"):
+                    lesson_data["author"] = self.request.user
         else:
-            if not serializer.validated_data.get('author'):
-                serializer.validated_data['author'] = self.request.user
+            if not serializer.validated_data.get("author"):
+                serializer.validated_data["author"] = self.request.user
 
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -71,24 +73,27 @@ class LessonCreateAPIView(CreateAPIView):
 
 class LessonListAPIView(ListAPIView):
     """Эндпоинт для просмотра списка всех уроков."""
+
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
 
 
 class LessonRetrieveAPIView(RetrieveAPIView):
     """Эндпоинт для просмотра детальной информации об одном уроке."""
+
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
 
 
 class LessonUpdateAPIView(UpdateAPIView):
     """Эндпоинт для редактирования параметров урока."""
+
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
 
 
 class LessonDestroyAPIView(DestroyAPIView):
     """Эндпоинт для удаления урока из системы."""
+
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
-
