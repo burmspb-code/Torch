@@ -97,7 +97,7 @@ class Payments(models.Model):
 
     user = models.ForeignKey(
         CustomUser,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         null=False,
         blank=False,
         related_name="payments",

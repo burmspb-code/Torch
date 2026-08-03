@@ -8,11 +8,21 @@
 from django.contrib.auth.models import update_last_login
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter
-from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView, CreateAPIView, DestroyAPIView
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
-from users.models import Payments
-from users.serializers import UserSerializer, PaymentSerializer
+from users.models import Payments, CustomUser
+from users.serializers import UserSerializer, PaymentSerializer, UserRegisterSerializer
+
+
+class UserCreateAPIView(CreateAPIView):
+    """
+    API-представление для создания пользователя.
+    """
+    queryset = CustomUser.objects.all()
+    serializer_class = UserRegisterSerializer
+    # Открываем доступ незарагистривованным пользователям
+    permission_classes = [AllowAny]
 
 
 class UserProfileAPIView(RetrieveUpdateAPIView):
@@ -21,7 +31,6 @@ class UserProfileAPIView(RetrieveUpdateAPIView):
     """
 
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
 
     def get_object(self):
         """Возвращает объект пользователя, выполняющего текущий запрос."""
@@ -35,13 +44,25 @@ class UserProfileAPIView(RetrieveUpdateAPIView):
         update_last_login(None, self.request.user)
 
 
+class UserDeleteAPIView(DestroyAPIView):
+    """
+    API-представление для удаления текущего пользователя.
+    """
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+
+    def get_object(self):
+        """Возвращает объект текущего пользователя для удаления."""
+        # Благодаря этому, юзер удалит именно себя, а не кого-то другого по ID
+        return self.request.user
+
+
 class PaymentsListAPIView(ListAPIView):
     """
     API-представления для вывода списка платежей текущего пользователя.
     """
 
     serializer_class = PaymentSerializer
-    permission_classes = [IsAuthenticated]
 
     # Подключаем бэкенд фильтрации
     filter_backends = [DjangoFilterBackend, OrderingFilter]

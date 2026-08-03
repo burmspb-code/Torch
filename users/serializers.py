@@ -50,3 +50,26 @@ class UserSerializer(serializers.ModelSerializer):
             "payments_information",
         )
         read_only_fields = ("email", "payments_information")
+
+
+class UserRegisterSerializer(serializers.ModelSerializer):
+    """Сериализатор для создания нового пльзователя."""
+
+    # Защита от пустых паролей
+    password = serializers.CharField(
+        write_only=True, # Скрваем пароль в ответах
+        required=True, # Поле обязательно
+        allow_blank=False, # Поле не может быть пустым
+    )
+
+    # ОБЯЗАТЕЛЬНО ДОБАВЛЯЕМ ЭТОТ МЕТОД:
+    def create(self, validated_data):
+        """Используем кастомный менеджер для безопасного хэширования пароля."""
+        # Метод create_user автоматически захеширует пароль перед сохранением
+        return CustomUser.objects.create_user(**validated_data)
+
+    class Meta:
+        """Класс метаданных."""
+        model = CustomUser
+        # ЯВНО перечисляем только безопасные поля:
+        fields = ("email", "password", "phone_number", "city", "avatar")
