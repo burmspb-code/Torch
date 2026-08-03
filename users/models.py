@@ -14,6 +14,8 @@ from django.contrib.auth.models import PermissionsMixin
 from phonenumber_field.modelfields import PhoneNumberField
 from django.db import models
 
+from aurora.models import Course, Lesson
+
 
 class CustomUserManager(BaseUserManager):
     """Менеджер для управления пользователями, где email является логином."""
@@ -88,3 +90,66 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+class Payments(models.Model):
+    """Модель платежей."""
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.PROTECT,
+        null=False,
+        blank=False,
+        related_name="payments",
+        verbose_name="Пользователь",
+    )
+    payment_date = models.DateField(
+        auto_now_add=True,  # Автоматически ставит текущую дату при создании
+        verbose_name="Дата платежа",
+    )
+    paid_course = models.ForeignKey(
+        Course,
+        on_delete=models.SET_NULL,
+        blank=True,  # Может быть пустым, если оплачен отдельный урок
+        null=True,  # Обязательно True, так как on_delete=SET_NULL
+        related_name="payments",
+        verbose_name="Оплаченный курс",
+        help_text="Выберите курс для оплаты",
+    )
+    paid_lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.SET_NULL,
+        blank=True,  # Может быть пустым, если оплачен отдельный урок
+        null=True,  # Обязательно True, так как on_delete=SET_NULL
+        related_name="payments",
+        verbose_name="Оплаченный урок",
+        help_text="Выберите урок для оплаты",
+    )
+    payment_amount = models.DecimalField(
+        decimal_places=2,
+        default=0,
+        max_digits=10,
+        null=False,
+        blank=False,
+        verbose_name="Сумма оплаты",
+        help_text="Укажите сумму платежа",
+    )
+    PAYMENT_METHODS: list[tuple[str, str]] = [
+        ("cash", "Наличные"),
+        ("transfer_to_account", "Перевод на счет"),
+    ]
+    payment_method = models.CharField(
+        max_length=50,
+        choices=PAYMENT_METHODS,
+        verbose_name="Способ оплаты",
+        help_text="Выберите способ оплаты",
+    )
+
+    class Meta:
+        """Класс метаданных."""
+
+        verbose_name = "Платеж"
+        verbose_name_plural = "Платежи"
+
+    def __str__(self):
+        return f"Платеж {self.id} от {self.user} на сумму {self.payment_amount}"

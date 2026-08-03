@@ -21,9 +21,11 @@ class Course(models.Model):
     """
     Модель для хранения информации об учебных курсах.
 
+    Связи:
+        lessons (Lesson): Обратная связь для получения всех уроков курса.
+
     Логика валидации:
         При создании нового курса поле 'author' является обязательным.
-        Для существующих курсов поле может быть пустым (например, если автор удален).
     """
 
     title = models.CharField(
@@ -42,7 +44,10 @@ class Course(models.Model):
         help_text="Загрузите превью",
     )
     description = models.TextField(
-        blank=True, null=True, verbose_name="Описание", help_text="Введите описание"
+        blank=True,
+        null=True,
+        verbose_name="Описание",
+        help_text="Введите описание",
     )
     is_archived = models.BooleanField(
         default=False,
@@ -58,7 +63,7 @@ class Course(models.Model):
     )
 
     class Meta:
-        """Класс метаданных."""
+        """Настройки отображения модели в административной панели."""
 
         verbose_name = "Курс"
         verbose_name_plural = "Курсы"
@@ -81,8 +86,9 @@ class Lesson(models.Model):
     """
     Модель отдельного урока в рамках курса платформы Aurora.
 
-    Связана с моделью Course отношением многие-к-одному.
-    Требует обязательного указания автора при создании.
+    Связи:
+        course (Course): Прямая связь с курсом (related_name='lessons').
+        author (User): Прямая связь с автором (related_name='lessons').
     """
 
     title = models.CharField(
@@ -99,7 +105,12 @@ class Lesson(models.Model):
         help_text="Введите описание урока",
     )
     course = models.ForeignKey(
-        Course, on_delete=models.CASCADE, blank=False, null=False, verbose_name="Курс"
+        Course,
+        on_delete=models.CASCADE,
+        blank=False,
+        null=False,
+        verbose_name="Курс",
+        related_name="lessons",
     )
     is_archived = models.BooleanField(
         default=False,
@@ -126,10 +137,11 @@ class Lesson(models.Model):
         null=True,
         verbose_name="Автор",
         help_text="Укажите автора урока",
+        related_name="lessons",
     )
 
     class Meta:
-        """Класс метаданных."""
+        """Настройки отображения модели в административной панели."""
 
         verbose_name = "Урок"
         verbose_name_plural = "Уроки"

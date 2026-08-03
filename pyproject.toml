@@ -15,7 +15,9 @@ dependencies = [
     "psycopg2-binary (>=2.9.12,<3.0.0)",
     "django-phonenumber-field (>=8.4.0,<9.0.0)",
     "phonenumbers (>=9.0.34,<10.0.0)",
-    "pillow (>=12.3.0,<13.0.0)"
+    "pillow (>=12.3.0,<13.0.0)",
+    "django-filter (>=26.1,<27.0)",
+    "djangorestframework-simplejwt (>=5.5.1,<6.0.0)"
 ]
 
 

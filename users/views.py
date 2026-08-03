@@ -5,16 +5,19 @@
 персональных данных пользователей системы.
 """
 
-from rest_framework.generics import UpdateAPIView
-from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import update_last_login
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter
+from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView
+from rest_framework.permissions import IsAuthenticated
 
-from users.serializers import UserSerializer
+from users.models import Payments
+from users.serializers import UserSerializer, PaymentSerializer
 
 
-class CustomUserUpdateAPIView(UpdateAPIView):
+class UserProfileAPIView(RetrieveUpdateAPIView):
     """
-    API-представление для безопасного редактирования профиля текущего пользователя.
+    API-представление для просмотра и безопасного редактирования профиля текущего пользователя.
     """
 
     serializer_class = UserSerializer
@@ -30,3 +33,31 @@ class CustomUserUpdateAPIView(UpdateAPIView):
         super().perform_update(serializer)
         # Вызываем встроенную функцию Django для обновления таймстампа
         update_last_login(None, self.request.user)
+
+
+class PaymentsListAPIView(ListAPIView):
+    """
+    API-представления для вывода списка платежей текущего пользователя.
+    """
+
+    serializer_class = PaymentSerializer
+    permission_classes = [IsAuthenticated]
+
+    # Подключаем бэкенд фильтрации
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    # Указываем поля, по которым можно фильтровать список
+    filterset_fields = (
+        "paid_course",
+        "paid_lesson",
+        "payment_method",
+    )
+
+    # Указываем, по каким полям разрешено сортировать
+    ordering_fields = ["payment_date"]
+    # Задаем сортировку по умолчанию, если параметр не передан в URL
+    ordering = ["-payment_date"]
+
+    def get_queryset(self):
+        """Возвращает все платежи польщователя."""
+        # Оптимизирует запрос, подгружая данные пользователя за один SQL-запрос
+        return Payments.objects.filter(user=self.request.user).select_related("user")
