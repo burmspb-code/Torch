@@ -9,7 +9,7 @@ from django.contrib.auth.models import update_last_login
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter
 from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView, CreateAPIView, DestroyAPIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import AllowAny
 
 from users.models import Payments, CustomUser
 from users.serializers import UserSerializer, PaymentSerializer, UserRegisterSerializer

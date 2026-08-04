@@ -8,6 +8,7 @@
 """
 
 from django.db.models import Count
+from rest_framework import status
 from rest_framework.generics import (
     CreateAPIView,
     DestroyAPIView,
@@ -15,12 +16,13 @@ from rest_framework.generics import (
     RetrieveAPIView,
     UpdateAPIView,
 )
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 
 from aurora.models import Course, Lesson
 from aurora.serializers import CourseSerializer, LessonSerializer
+from users.permissions import IsModerPermission
 
 
 # CRUD для Курса через ViewSet (Автоматически: Create, Retrieve, Update, Destroy, List)
@@ -36,6 +38,19 @@ class CourseViewSet(ModelViewSet):
     queryset = Course.objects.annotate(quantity_lessons=Count("lessons"))
     serializer_class = CourseSerializer
 
+    def get_permissions(self):
+        """Динамические права по ТЗ:
+        - Создание/Удаление: только Админ
+        - Редактирование: только Модератор
+        - Просмотр: любой авторизованный пользователь
+        """
+        if self.action in ["create", "destroy"]:
+            return [IsAdminUser()]
+
+        if self.action in ["update", "partial_update"]:
+            return [IsModerPermission()]
+
+        return [IsAuthenticated()]
 
 # CRUD для Урока через Generic Views
 class LessonCreateAPIView(CreateAPIView):
@@ -48,6 +63,8 @@ class LessonCreateAPIView(CreateAPIView):
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    # Создавать уроки может только Админ (is_staff=True)
+    permission_classes = [IsAdminUser]
 
     def create(self, request, *args, **kwargs):
         """Обрабатывает POST-запрос с поддержкой списков и гибкой валидацией автора."""
@@ -76,6 +93,8 @@ class LessonListAPIView(ListAPIView):
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    # Просматривать список могут ВСЕ авторизованные пользователи (включая модераторов)
+    permission_classes = [IsAuthenticated]
 
 
 class LessonRetrieveAPIView(RetrieveAPIView):
@@ -83,6 +102,8 @@ class LessonRetrieveAPIView(RetrieveAPIView):
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    # Просматривать детали могут ВСЕ авторизованные пользователи
+    permission_classes = [IsAuthenticated]
 
 
 class LessonUpdateAPIView(UpdateAPIView):
@@ -90,6 +111,8 @@ class LessonUpdateAPIView(UpdateAPIView):
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    # Редактировать уроки могут только Модераторы (или Админы)
+    permission_classes = [IsModerPermission]
 
 
 class LessonDestroyAPIView(DestroyAPIView):
@@ -97,3 +120,5 @@ class LessonDestroyAPIView(DestroyAPIView):
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    # Удалять уроки может только Админ
+    permission_classes = [IsAdminUser]
