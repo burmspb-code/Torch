@@ -44,9 +44,12 @@ class CustomUserAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         ("Личные данные", {"fields": ("phone_number", "city", "avatar")}),
-        ("Права доступа", {"fields": ("is_active", "is_staff", "is_superuser")}),
+        ("Права доступа", {"fields": ("is_active", "is_staff", "is_superuser", 'groups', 'user_permissions')}),
         ("Важные даты", {"fields": ("date_joined", "last_login")}),  # Добавили сюда
     )
+
+    # Делает выбор групп визуально удобным (две колонки со стрелочками и поиском)
+    filter_horizontal = ('groups', 'user_permissions')
 
     def get_form(self, request, obj=None, **kwargs):
         """Динамически выбирает форму создания или редактирования."""

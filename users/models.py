@@ -40,7 +40,7 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-class CustomUser(AbstractBaseUser, PermissionsMixin):
+class CustomUser(PermissionsMixin, AbstractBaseUser):
     """Класс создания кастомной модели пользователя."""
 
     email = models.EmailField(
