@@ -80,6 +80,11 @@ class CustomUser(PermissionsMixin, AbstractBaseUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
+    @property
+    def is_moderator(self):
+        """Возвращает True, если пользователь модератор, иначе False."""
+        return self.groups.filter(name="moderators").exists()
+
     objects = CustomUserManager()  # Связываем модель с кастомным менеджером
 
     class Meta:

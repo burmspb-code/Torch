@@ -5,7 +5,7 @@ class IsModerPermission(permissions.BasePermission):
     """Кастомный класс разрешений для проверки принадлежности к группе модераторов.
 
     Разрешает доступ к эндпоинту только аутентифицированным пользователям,
-    которые состоят в группе с именем 'moder'.
+    которые состоят в группе с именем 'moderators'.
     """
     message = 'Доступ запрещен. Требуются права модератора.'
 
@@ -24,3 +24,14 @@ class IsModerPermission(permissions.BasePermission):
             return False
 
         return request.user.groups.filter(name='moderators').exists()
+
+
+class IsOwnerPermission(permissions.BasePermission):
+    """Разрешает полный доступ (чтение и редактирование) автору объекта."""
+    def has_permission(self, request, view):
+        """Проверяет, залогинен ли пользователь."""
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request, view, obj):
+        """Проверяет, является ли пользователь владельцем, метод работает кроме эндпоинта list."""
+        return obj.author == request.user
