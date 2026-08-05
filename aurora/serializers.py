@@ -6,6 +6,7 @@
 с валидацией входящих параметров.
 """
 
+from django.db import transaction
 from rest_framework import serializers
 
 from aurora.models import Lesson, Course
@@ -38,6 +39,7 @@ class LessonSerializer(serializers.ModelSerializer):
 
     class Meta:
         """Конфигурация полей сериализатора."""
+
         model = Lesson
         fields = "__all__"
         list_serializer_class = LessonBulkCreateListSerializer
@@ -66,8 +68,18 @@ class CourseSerializer(serializers.ModelSerializer):
 
     class Meta:
         """Конфигурация полей сериализатора."""
+
         model = Course
-        fields = ("id", "title", "preview", "description", "is_archived", "author", "quantity_lessons")
+        fields = (
+            "id",
+            "title",
+            "preview",
+            "description",
+            "is_archived",
+            "author",
+            "quantity_lessons",
+            "lesson_information",
+        )
 
 
 # class CourseSerializer(serializers.ModelSerializer):

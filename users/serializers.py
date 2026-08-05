@@ -57,9 +57,9 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
     # Защита от пустых паролей
     password = serializers.CharField(
-        write_only=True, # Скрваем пароль в ответах
-        required=True, # Поле обязательно
-        allow_blank=False, # Поле не может быть пустым
+        write_only=True,  # Скрваем пароль в ответах
+        required=True,  # Поле обязательно
+        allow_blank=False,  # Поле не может быть пустым
     )
 
     # ОБЯЗАТЕЛЬНО ДОБАВЛЯЕМ ЭТОТ МЕТОД:
@@ -70,6 +70,22 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         """Класс метаданных."""
+
         model = CustomUser
         # ЯВНО перечисляем только безопасные поля:
         fields = ("email", "password", "phone_number", "city", "avatar")
+
+
+class UserPublicProfileSerializer(serializers.ModelSerializer):
+    """Публичный профиль (для чужих): видны только базовые поля."""
+
+    class Meta:
+        """Класс метаданных."""
+
+        model = CustomUser
+        fields = (
+            "id",
+            "email",
+            "city",
+            "avatar",
+        )  # Только разрешенные поля

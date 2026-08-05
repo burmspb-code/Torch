@@ -8,17 +8,29 @@
 from django.contrib.auth.models import update_last_login
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter
-from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView, CreateAPIView, DestroyAPIView
-from rest_framework.permissions import AllowAny
+from rest_framework.generics import (
+    RetrieveUpdateAPIView,
+    ListAPIView,
+    CreateAPIView,
+    DestroyAPIView,
+    RetrieveAPIView,
+)
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from users.models import Payments, CustomUser
-from users.serializers import UserSerializer, PaymentSerializer, UserRegisterSerializer
+from users.serializers import (
+    UserSerializer,
+    PaymentSerializer,
+    UserRegisterSerializer,
+    UserPublicProfileSerializer,
+)
 
 
 class UserCreateAPIView(CreateAPIView):
     """
     API-представление для создания пользователя.
     """
+
     queryset = CustomUser.objects.all()
     serializer_class = UserRegisterSerializer
     # Открываем доступ незарагистривованным пользователям
@@ -44,10 +56,36 @@ class UserProfileAPIView(RetrieveUpdateAPIView):
         update_last_login(None, self.request.user)
 
 
+class UserRetrieveAPIView(RetrieveAPIView):
+    """
+    API-представления для просмотра профиля любого пользователя.
+    """
+
+    queryset = CustomUser.objects.all()
+    permission_classes = (IsAuthenticated,)
+
+    def get_serializer_class(self):
+        # Получаем текущего авторизованного пользователя
+        user = self.request.user
+
+        # Безопасно достаем pk запрашиваемого профиля из URL-адреса
+        # self.kwargs хранит все переменные из вашего пути path('profile/<int:pk>/', ...)
+        requested_pk = self.kwargs.get("pk")
+
+        # Сравниваем ID
+        # Если запрашивают свой профиль, либо запрашивает админ/модератор
+        if str(requested_pk) == str(user.pk) or user.is_staff or user.is_moderator:
+            return UserSerializer
+
+        # Всем остальным — урезанную версию
+        return UserPublicProfileSerializer
+
+
 class UserDeleteAPIView(DestroyAPIView):
     """
     API-представление для удаления текущего пользователя.
     """
+
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
 

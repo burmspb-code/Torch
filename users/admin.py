@@ -26,6 +26,7 @@ class CustomUserAdmin(admin.ModelAdmin):
     ordering = ("email",)
 
     list_display = (
+        "id",
         "email",
         "phone_number",
         "city",
@@ -33,23 +34,46 @@ class CustomUserAdmin(admin.ModelAdmin):
         "is_staff",
         "is_superuser",
         "is_active",
+        "display_groups",
         "date_joined",
         "last_login",
     )
 
-    list_filter = ("is_staff", "is_superuser", "is_active")
+    list_filter = ("is_staff", "is_superuser", "is_active", "groups")
     readonly_fields = ("date_joined", "last_login")
     search_fields = ("email", "phone_number", "city")
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         ("Личные данные", {"fields": ("phone_number", "city", "avatar")}),
-        ("Права доступа", {"fields": ("is_active", "is_staff", "is_superuser", 'groups', 'user_permissions')}),
+        (
+            "Права доступа",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                )
+            },
+        ),
         ("Важные даты", {"fields": ("date_joined", "last_login")}),  # Добавили сюда
     )
 
     # Делает выбор групп визуально удобным (две колонки со стрелочками и поиском)
-    filter_horizontal = ('groups', 'user_permissions')
+    filter_horizontal = ("groups", "user_permissions")
+
+    def get_queryset(self, request):
+        """Подгружает группы пользователей за один SQL-запрос."""
+        qs = super().get_queryset(request)
+        return qs.prefetch_related("groups")
+
+    @admin.display(description="Группы")
+    def display_groups(self, obj):
+        """Выводит список названий групп через запятую."""
+        groups = [group.name for group in obj.groups.all()]
+        return ", ".join(groups) if groups else "-"
 
     def get_form(self, request, obj=None, **kwargs):
         """Динамически выбирает форму создания или редактирования."""

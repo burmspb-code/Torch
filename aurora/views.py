@@ -34,6 +34,7 @@ class CourseViewSet(ModelViewSet):
     Оптимизирован для предотвращения проблемы N+1 запросов: количество связанных
     уроков агрегируется на уровне базы данных для всех операций вывода.
     """
+
     serializer_class = CourseSerializer
 
     def get_permissions(self):
@@ -43,19 +44,18 @@ class CourseViewSet(ModelViewSet):
         - Редактирование и просмотр одного курса (update, retrieve): Только Модератор или Автор,
         - Просмотр списка (list): Админ, Модератор, Автор видит только свои курсы.
         """
-        # Модераторам запрещено создавать курсы
         if self.action == "create":
-            # Исключаем модераторов из возможности создания
-            return [IsAuthenticated() & ~IsModerPermission()]
+            permission_classes = (IsAuthenticated & ~IsModerPermission,)
+        elif self.action == "destroy":
+            permission_classes = (IsAdminUser | IsOwnerPermission,)
+        elif self.action in ["update", "partial_update", "retrieve"]:
+            permission_classes = (IsModerPermission | IsOwnerPermission,)
+        else:
+            permission_classes = (IsAuthenticated,)
 
-        if self.action == "destroy":
-            return [IsAdminUser() | IsOwnerPermission()]
+        # Просмотр списка настраивается в get_queryset()
 
-        if self.action in ["update", "partial_update", "retrieve"]:
-            return [IsModerPermission() | IsOwnerPermission()]
-
-        # Просмотр списка настаивается в get_queryset()
-        return [IsAuthenticated()]
+        return tuple(permission() for permission in permission_classes)
 
     def get_queryset(self):
         # Базовый кверисет с решенной проблемой N+1

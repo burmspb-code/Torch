@@ -7,7 +7,8 @@ class IsModerPermission(permissions.BasePermission):
     Разрешает доступ к эндпоинту только аутентифицированным пользователям,
     которые состоят в группе с именем 'moderators'.
     """
-    message = 'Доступ запрещен. Требуются права модератора.'
+
+    message = "Доступ запрещен. Требуются права модератора."
 
     def has_permission(self, request, view):
         """Проверяет права доступа пользователя к текущему эндпоинту.
@@ -23,11 +24,12 @@ class IsModerPermission(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        return request.user.groups.filter(name='moderators').exists()
+        return request.user.groups.filter(name="moderators").exists()
 
 
 class IsOwnerPermission(permissions.BasePermission):
     """Разрешает полный доступ (чтение и редактирование) автору объекта."""
+
     def has_permission(self, request, view):
         """Проверяет, залогинен ли пользователь."""
         return bool(request.user and request.user.is_authenticated)
