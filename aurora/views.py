@@ -8,6 +8,8 @@
 """
 
 from django.db.models import Count
+from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import (
     CreateAPIView,
     DestroyAPIView,
@@ -15,12 +17,13 @@ from rest_framework.generics import (
     RetrieveAPIView,
     UpdateAPIView,
 )
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 
 from aurora.models import Course, Lesson
 from aurora.serializers import CourseSerializer, LessonSerializer
+from users.permissions import IsModerPermission, IsOwnerPermission
 
 
 # CRUD для Курса через ViewSet (Автоматически: Create, Retrieve, Update, Destroy, List)
@@ -32,43 +35,60 @@ class CourseViewSet(ModelViewSet):
     уроков агрегируется на уровне базы данных для всех операций вывода.
     """
 
-    # Перенесли annotate сюда — теперь проблема N+1 решена для всех курсов!
-    queryset = Course.objects.annotate(quantity_lessons=Count("lessons"))
     serializer_class = CourseSerializer
 
+    def get_permissions(self):
+        """Динамические права по ТЗ с учетом специфики DRF:
+        - Создание (create): Администраторы и обычные пользователи (Модераторам нельзя),
+        - Удаление (destroy): Только Админ или Автор объекта,
+        - Редактирование и просмотр одного курса (update, retrieve): Только Модератор или Автор,
+        - Просмотр списка (list): Админ, Модератор, Автор видит только свои курсы.
+        """
+        if self.action == "create":
+            permission_classes = (IsAuthenticated & ~IsModerPermission,)
+        elif self.action == "destroy":
+            permission_classes = (IsAdminUser | IsOwnerPermission,)
+        elif self.action in ["update", "partial_update", "retrieve"]:
+            permission_classes = (IsModerPermission | IsOwnerPermission,)
+        else:
+            permission_classes = (IsAuthenticated,)
 
-# CRUD для Урока через Generic Views
+        # Просмотр списка настраивается в get_queryset()
+
+        return tuple(permission() for permission in permission_classes)
+
+    def get_queryset(self):
+        # Базовый кверисет с решенной проблемой N+1
+        base_queryset = Course.objects.annotate(quantity_lessons=Count("lessons"))
+        user = self.request.user
+
+        if user.is_staff or user.is_moderator:
+            return base_queryset
+
+        # Обычные пользователи видят только свои курсы
+        return base_queryset.filter(author=user)
+
+    def perform_create(self, serializer):
+        """Автоматически назначает текущего пользователя автором курса при создании."""
+        serializer.save(author=self.request.user)
+
+
+# CRUD для Курса через Generics
 class LessonCreateAPIView(CreateAPIView):
-    """
-    Эндпоинт для создания одного урока или массового создания списка уроков.
-
-    Поддерживает как ручное указание ID автора в JSON-запросе, так и автоматическую
-    подстановку текущего авторизованного пользователя, если автор не указан.
-    """
+    """Эндпоинт для создания одного урока или массового создания списка уроков."""
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    # Создать урок могут все авторизованные пользователи, но не Модератор
+    permission_classes = [IsAuthenticated & ~IsModerPermission]
 
-    def create(self, request, *args, **kwargs):
-        """Обрабатывает POST-запрос с поддержкой списков и гибкой валидацией автора."""
-        # Автоматически определяем структуру входящих данных (массив или объект)
-        is_many = isinstance(request.data, list)
+    def get_serializer(self, *args, **kwargs):
+        """Позволяет эндпоинту принимать как один объект, так и список объектов."""
+        # Если в теле запроса пришел JSON-массив (список)
+        if isinstance(kwargs.get("data"), list):
+            kwargs["many"] = True  # Включаем bulk-режим для ListSerializer
 
-        serializer = self.get_serializer(data=request.data, many=is_many)
-        serializer.is_valid(raise_exception=True)
-
-        # Настройка гибкого заполнения автора
-        if is_many:
-            for lesson_data in serializer.validated_data:
-                # Если автор не передан руками в Postman — подставляем текущего юзера
-                if not lesson_data.get("author"):
-                    lesson_data["author"] = self.request.user
-        else:
-            if not serializer.validated_data.get("author"):
-                serializer.validated_data["author"] = self.request.user
-
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return super().get_serializer(*args, **kwargs)
 
 
 class LessonListAPIView(ListAPIView):
@@ -76,6 +96,15 @@ class LessonListAPIView(ListAPIView):
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    # Просматривать список могут ВСЕ авторизованные пользователи (включая модераторов)
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Фильтруем просмотр списка уроков по текущему пользователю."""
+        user = self.request.user
+        if user.is_moderator:
+            return Lesson.objects.all()
+        return Lesson.objects.filter(author=user)
 
 
 class LessonRetrieveAPIView(RetrieveAPIView):
@@ -83,6 +112,8 @@ class LessonRetrieveAPIView(RetrieveAPIView):
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    # Просматривать детали могут Авторы и Модераторы
+    permission_classes = [IsAuthenticated & (IsModerPermission | IsOwnerPermission)]
 
 
 class LessonUpdateAPIView(UpdateAPIView):
@@ -90,6 +121,8 @@ class LessonUpdateAPIView(UpdateAPIView):
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    # Редактировать уроки могут только Авторы и Модераторы
+    permission_classes = [IsAuthenticated & (IsModerPermission | IsOwnerPermission)]
 
 
 class LessonDestroyAPIView(DestroyAPIView):
@@ -97,3 +130,5 @@ class LessonDestroyAPIView(DestroyAPIView):
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    # Удалять уроки может только Админ
+    permission_classes = [IsAdminUser]

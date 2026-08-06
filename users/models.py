@@ -40,7 +40,7 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-class CustomUser(AbstractBaseUser, PermissionsMixin):
+class CustomUser(PermissionsMixin, AbstractBaseUser):
     """Класс создания кастомной модели пользователя."""
 
     email = models.EmailField(
@@ -80,6 +80,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
+    @property
+    def is_moderator(self):
+        """Возвращает True, если пользователь модератор, иначе False."""
+        return self.groups.filter(name="moderators").exists()
+
     objects = CustomUserManager()  # Связываем модель с кастомным менеджером
 
     class Meta:
@@ -97,7 +102,7 @@ class Payments(models.Model):
 
     user = models.ForeignKey(
         CustomUser,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         null=False,
         blank=False,
         related_name="payments",
