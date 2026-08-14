@@ -73,6 +73,23 @@ class CourseSerializer(serializers.ModelSerializer):
     # Для информации об уроках используем готовый сериализатор
     lesson_information = LessonSerializer(source="lessons", many=True, read_only=True)
 
+    # Выводим информацию о подписке
+    course_subscription = serializers.SerializerMethodField()
+
+    def get_course_subscription(self, obj):
+        """Возвращаем True если у пользователя есть подписка на курс, иначе False."""
+        # Безопасно получаем request из контекста
+        request = self.context.get("request")
+
+        if not request or request.user.is_anonymous: # Проверка на незарегистрированного пользователя
+            return False
+
+        # Получаем флаг подписки есть/нет
+        is_subscribe = obj.subscribes.filter(user=request.user, is_archived=False).exists()
+
+        return True if is_subscribe else False
+
+
     class Meta:
         """Конфигурация полей сериализатора."""
 
@@ -82,10 +99,11 @@ class CourseSerializer(serializers.ModelSerializer):
             "title",
             "preview",
             "description",
+            "course_subscription",
             "is_archived",
             "author",
             "quantity_lessons",
-            "lesson_information",
+            "lesson_information"
         )
 
 
