@@ -9,7 +9,8 @@
 from django.db import transaction
 from rest_framework import serializers
 
-from aurora.models import Lesson, Course
+from aurora.models import Lesson, Course, Subscribe
+from aurora.validators import validator_allowed_words
 
 
 class LessonBulkCreateListSerializer(serializers.ListSerializer):
@@ -36,6 +37,12 @@ class LessonBulkCreateListSerializer(serializers.ListSerializer):
 
 class LessonSerializer(serializers.ModelSerializer):
     """Сериализатор урока."""
+    # Назначаем валидатор на поле для внешней ссылки
+    external_link = serializers.URLField(validators=[validator_allowed_words],
+                                         required=False,
+                                         allow_null=True,
+                                         allow_blank=True,
+                                         )
 
     class Meta:
         """Конфигурация полей сериализатора."""
@@ -81,6 +88,16 @@ class CourseSerializer(serializers.ModelSerializer):
             "lesson_information",
         )
 
+
+class SubscribeSerializer(serializers.ModelSerializer):
+    """Сериализтор для работы с подписками пользователя."""
+
+    class Meta:
+        """Класс метаданных."""
+        model = Subscribe
+        fields = ["id", "user", "course", "is_archived"]
+        # Делаем поля доступными только на чтение, чтобы Swagger не требовал их в POST-запросе
+        read_only_fields = ["user", "course", "is_archived"]
 
 # class CourseSerializer(serializers.ModelSerializer):
 #     """Сериализатор курса, включающий агрегированные данные о количестве уроков."""

@@ -35,4 +35,5 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     # Маршрут для удаления пользователя
     path("delete/", UserDeleteAPIView.as_view(), name="user_delete"),
+
 ]

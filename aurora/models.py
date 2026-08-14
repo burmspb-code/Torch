@@ -158,3 +158,43 @@ class Lesson(models.Model):
                     "author": "При создании нового урока необходимо обязательно указать автора."
                 }
             )
+
+
+class Subscribe(models.Model):
+    """Модель подписки пользователя на курс."""
+
+    is_archived = models.BooleanField(
+        default=False,
+        verbose_name="Архивная",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        blank=False,
+        null=False,
+        related_name="subscribes",
+        verbose_name="Пользователь"
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        blank=False,
+        null=False,
+        related_name="subscribes",
+        verbose_name="Курс",
+    )
+
+    class Meta:
+        """Настройка параметров модели."""
+        verbose_name = "Подписка"
+        verbose_name_plural = "Подписки"
+        # Гарантируем, что связь между юзером и курсом существует в единственном экземпляре
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "course"],
+                name="unique_user_course_subscribe",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} подписан на курс {self.course.title}"

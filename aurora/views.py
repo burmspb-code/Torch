@@ -9,7 +9,6 @@
 
 from django.db.models import Count
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import (
     CreateAPIView,
     DestroyAPIView,
@@ -19,10 +18,11 @@ from rest_framework.generics import (
 )
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
-from aurora.models import Course, Lesson
-from aurora.serializers import CourseSerializer, LessonSerializer
+from aurora.models import Course, Lesson, Subscribe
+from aurora.serializers import CourseSerializer, LessonSerializer, SubscribeSerializer
 from users.permissions import IsModerPermission, IsOwnerPermission
 
 
@@ -132,3 +132,40 @@ class LessonDestroyAPIView(DestroyAPIView):
     serializer_class = LessonSerializer
     # Удалять уроки может только Админ
     permission_classes = [IsAdminUser]
+
+
+class SubscribeAPIView(APIView):
+    """
+     API-представление для создания/удаления подписки пользователя.
+     Реализован сценарий мягкого удаления (перенос в архив) для
+     возможной последующей аналитика данных.
+     """
+
+    serializer_class = SubscribeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = self.request.user  # Получаем пользователя
+        course_id = kwargs.get("course_id")  # Получаем курс
+        subscribe_obj = Subscribe.objects.filter(user=user, course_id=course_id).first()  # Полуаем подписку
+        # Выставляем флаг активности подсписки
+        is_active = True if not subscribe_obj else subscribe_obj.is_archived
+
+        obj, created = Subscribe.objects.update_or_create(
+            user=user,
+            course_id=course_id,
+            defaults={"is_archived": not is_active}
+        )
+
+        if created:
+            message = "Подписка успешно добавлена"
+        else:
+            message = "Подписка восстановлена" if is_active else "Подписка успешно удалена"
+
+        return Response(
+            {
+                "message": message,
+                "is_subscribed": is_active
+            },
+            status=status.HTTP_200_OK
+        )
