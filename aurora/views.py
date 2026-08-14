@@ -22,6 +22,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from aurora.models import Course, Lesson, Subscribe
+from aurora.paginators import CoursePagination, LessonPagination
 from aurora.serializers import CourseSerializer, LessonSerializer, SubscribeSerializer
 from users.permissions import IsModerPermission, IsOwnerPermission
 
@@ -36,6 +37,7 @@ class CourseViewSet(ModelViewSet):
     """
 
     serializer_class = CourseSerializer
+    pagination_class = CoursePagination
 
     def get_permissions(self):
         """Динамические права по ТЗ с учетом специфики DRF:
@@ -96,6 +98,7 @@ class LessonListAPIView(ListAPIView):
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    pagination_class = LessonPagination
     # Просматривать список могут ВСЕ авторизованные пользователи (включая модераторов)
     permission_classes = [IsAuthenticated]
 
