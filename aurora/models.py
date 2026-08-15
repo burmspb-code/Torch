@@ -173,7 +173,7 @@ class Subscribe(models.Model):
         blank=False,
         null=False,
         related_name="subscribes",
-        verbose_name="Пользователь"
+        verbose_name="Пользователь",
     )
     course = models.ForeignKey(
         Course,
@@ -186,6 +186,7 @@ class Subscribe(models.Model):
 
     class Meta:
         """Настройка параметров модели."""
+
         verbose_name = "Подписка"
         verbose_name_plural = "Подписки"
         # Гарантируем, что связь между юзером и курсом существует в единственном экземпляре

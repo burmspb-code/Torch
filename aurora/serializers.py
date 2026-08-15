@@ -37,12 +37,14 @@ class LessonBulkCreateListSerializer(serializers.ListSerializer):
 
 class LessonSerializer(serializers.ModelSerializer):
     """Сериализатор урока."""
+
     # Назначаем валидатор на поле для внешней ссылки
-    external_link = serializers.URLField(validators=[validator_allowed_words],
-                                         required=False,
-                                         allow_null=True,
-                                         allow_blank=True,
-                                         )
+    external_link = serializers.URLField(
+        validators=[validator_allowed_words],
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+    )
 
     class Meta:
         """Конфигурация полей сериализатора."""
@@ -81,14 +83,17 @@ class CourseSerializer(serializers.ModelSerializer):
         # Безопасно получаем request из контекста
         request = self.context.get("request")
 
-        if not request or request.user.is_anonymous: # Проверка на незарегистрированного пользователя
+        if (
+            not request or request.user.is_anonymous
+        ):  # Проверка на незарегистрированного пользователя
             return False
 
         # Получаем флаг подписки есть/нет
-        is_subscribe = obj.subscribes.filter(user=request.user, is_archived=False).exists()
+        is_subscribe = obj.subscribes.filter(
+            user=request.user, is_archived=False
+        ).exists()
 
         return True if is_subscribe else False
-
 
     class Meta:
         """Конфигурация полей сериализатора."""
@@ -103,7 +108,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "is_archived",
             "author",
             "quantity_lessons",
-            "lesson_information"
+            "lesson_information",
         )
 
 
@@ -112,10 +117,12 @@ class SubscribeSerializer(serializers.ModelSerializer):
 
     class Meta:
         """Класс метаданных."""
+
         model = Subscribe
         fields = ["id", "user", "course", "is_archived"]
         # Делаем поля доступными только на чтение, чтобы Swagger не требовал их в POST-запросе
         read_only_fields = ["user", "course", "is_archived"]
+
 
 # class CourseSerializer(serializers.ModelSerializer):
 #     """Сериализатор курса, включающий агрегированные данные о количестве уроков."""

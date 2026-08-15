@@ -139,10 +139,10 @@ class LessonDestroyAPIView(DestroyAPIView):
 
 class SubscribeAPIView(APIView):
     """
-     API-представление для создания/удаления подписки пользователя.
-     Реализован сценарий мягкого удаления (перенос в архив) для
-     возможной последующей аналитика данных.
-     """
+    API-представление для создания/удаления подписки пользователя.
+    Реализован сценарий мягкого удаления (перенос в архив) для
+    возможной последующей аналитика данных.
+    """
 
     serializer_class = SubscribeSerializer
     permission_classes = [IsAuthenticated]
@@ -150,25 +150,23 @@ class SubscribeAPIView(APIView):
     def post(self, request, *args, **kwargs):
         user = self.request.user  # Получаем пользователя
         course_id = kwargs.get("course_id")  # Получаем курс
-        subscribe_obj = Subscribe.objects.filter(user=user, course_id=course_id).first()  # Полуаем подписку
+        subscribe_obj = Subscribe.objects.filter(
+            user=user, course_id=course_id
+        ).first()  # Полуаем подписку
         # Выставляем флаг активности подсписки
         is_active = True if not subscribe_obj else subscribe_obj.is_archived
 
         obj, created = Subscribe.objects.update_or_create(
-            user=user,
-            course_id=course_id,
-            defaults={"is_archived": not is_active}
+            user=user, course_id=course_id, defaults={"is_archived": not is_active}
         )
 
         if created:
             message = "Подписка успешно добавлена"
         else:
-            message = "Подписка восстановлена" if is_active else "Подписка успешно удалена"
+            message = (
+                "Подписка восстановлена" if is_active else "Подписка успешно удалена"
+            )
 
         return Response(
-            {
-                "message": message,
-                "is_subscribed": is_active
-            },
-            status=status.HTTP_200_OK
+            {"message": message, "is_subscribed": is_active}, status=status.HTTP_200_OK
         )

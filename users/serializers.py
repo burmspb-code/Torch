@@ -89,4 +89,3 @@ class UserPublicProfileSerializer(serializers.ModelSerializer):
             "city",
             "avatar",
         )  # Только разрешенные поля
-

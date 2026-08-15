@@ -2,7 +2,6 @@
 
 from rest_framework.serializers import ValidationError
 
-
 ALLOWED_WORDS = "youtube.com"
 
 

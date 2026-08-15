@@ -18,23 +18,25 @@ class LessonTestsCase(APITestCase):
         self.super_user = CustomUser.objects.create_superuser(email="admin")
 
         # Создаем обычного пользователя
-        self.user = CustomUser.objects.create_user(email='test@example.com')
+        self.user = CustomUser.objects.create_user(email="test@example.com")
 
         # Создаем группу для модераторов
-        group_moder, _ = Group.objects.get_or_create(name='moderators')
+        group_moder, _ = Group.objects.get_or_create(name="moderators")
 
         # Создаем модератора
-        self.user_moderator = CustomUser.objects.create_user(email='test_1@example.com')
+        self.user_moderator = CustomUser.objects.create_user(email="test_1@example.com")
         self.user_moderator.groups.add(group_moder)
 
         # Создаем пользователя автора урока
-        self.user_owner = CustomUser.objects.create_user(email='test_2@example.com')
+        self.user_owner = CustomUser.objects.create_user(email="test_2@example.com")
 
         # Создаем курс
-        self.course = Course.objects.create(title='Питон', author=self.user_owner)
+        self.course = Course.objects.create(title="Питон", author=self.user_owner)
 
         # Создаем урок
-        self.lesson = Lesson.objects.create(title='Циклы', course=self.course, author=self.user_owner)
+        self.lesson = Lesson.objects.create(
+            title="Циклы", course=self.course, author=self.user_owner
+        )
 
     def test_lesson_detail(self):
         """Тестирование просмотра урока обычным пользователем, автором и модератором."""
@@ -45,7 +47,9 @@ class LessonTestsCase(APITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.client.force_authenticate(user=None)  # Очистка при переходе к другому пользователю
+        self.client.force_authenticate(
+            user=None
+        )  # Очистка при переходе к другому пользователю
 
         # Проверяем, что автор может посмотреть свой урок + валидация данных
         self.client.force_authenticate(user=self.user_owner)
@@ -56,7 +60,9 @@ class LessonTestsCase(APITestCase):
         self.assertEqual(response.data["course"], self.lesson.course.id)
         self.assertEqual(response.data["author"], self.user_owner.id)
 
-        self.client.force_authenticate(user=None)  # Очистка при переходе к другому пользователю
+        self.client.force_authenticate(
+            user=None
+        )  # Очистка при переходе к другому пользователю
 
         # Проверяем, что модератор может посмотреть урок + валидация данных
         self.client.force_authenticate(user=self.user_moderator)
@@ -67,14 +73,11 @@ class LessonTestsCase(APITestCase):
         self.assertEqual(response.data["course"], self.lesson.course.id)
         self.assertEqual(response.data["author"], self.user_owner.id)
 
-
     def test_lesson_update(self):
         """Тестирование обновления урока обычным пользователем, автором и модератором."""
         url = reverse("aurora:lesson_update", args=[self.lesson.pk])
 
-        update_data = {
-            "title": "Списки"
-        }
+        update_data = {"title": "Списки"}
 
         # Проверяем, что обычный пользователь не может редактировать чужой урок
         self.client.force_authenticate(user=self.user)
@@ -96,9 +99,7 @@ class LessonTestsCase(APITestCase):
 
         self.client.force_authenticate(user=None)  # Очистка
 
-        update_data_1 = {
-            "title": "Списки_1"
-        }
+        update_data_1 = {"title": "Списки_1"}
 
         # Проверяем, что модератор может редактировать урок
         self.client.force_authenticate(user=self.user_moderator)
@@ -112,7 +113,6 @@ class LessonTestsCase(APITestCase):
         self.lesson.refresh_from_db()  # Снова подтягиваем свежие изменения
         self.assertEqual(self.lesson.title, "Списки_1")
 
-
     def test_lesson_delete(self):
         """Тестирование удаления урока обычным пользователем, автором и модератором."""
         url = reverse("aurora:lesson_delete", args=[self.lesson.pk])
@@ -122,35 +122,40 @@ class LessonTestsCase(APITestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.client.force_authenticate(user=None)  # Очистка при переходе к другому пользователю
+        self.client.force_authenticate(
+            user=None
+        )  # Очистка при переходе к другому пользователю
 
         # Проверяем, что автор не может удалить свой урок
         self.client.force_authenticate(user=self.user_owner)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.client.force_authenticate(user=None)  # Очистка при переходе к другому пользователю
+        self.client.force_authenticate(
+            user=None
+        )  # Очистка при переходе к другому пользователю
 
         # Проверяем, что модератор не может удалить урок
         self.client.force_authenticate(user=self.user_moderator)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.client.force_authenticate(user=None)  # Очистка при переходе к другому пользователю
+        self.client.force_authenticate(
+            user=None
+        )  # Очистка при переходе к другому пользователю
 
         # Проверяем, что администратор может удалить урок
         self.client.force_authenticate(user=self.super_user)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-
     def test_lesson_create(self):
         """Тестирование создания урока обычным пользователем и модератором."""
         url = reverse("aurora:lesson_create")
 
         new_data = {
-            "title":"Новый урок",
-            "course":self.course.pk,
+            "title": "Новый урок",
+            "course": self.course.pk,
         }
 
         # Проверяем, что обычный пользователь может создать урок
@@ -164,16 +169,19 @@ class LessonTestsCase(APITestCase):
 
         # Валидация базы данных
         created_lesson = Lesson.objects.filter(title="Новый урок").first()
-        self.assertIsNotNone(created_lesson) # Проверяем, что такой объект существует
-        self.assertEqual(created_lesson.course.pk, self.course.pk) # Проверяем связь с курсом
+        self.assertIsNotNone(created_lesson)  # Проверяем, что такой объект существует
+        self.assertEqual(
+            created_lesson.course.pk, self.course.pk
+        )  # Проверяем связь с курсом
 
-        self.client.force_authenticate(user=None)  # Очистка при переходе к другому пользователю
+        self.client.force_authenticate(
+            user=None
+        )  # Очистка при переходе к другому пользователю
 
         # Проверяем, что модератор не может создать урок
         self.client.force_authenticate(user=self.user_moderator)
         response = self.client.post(url, data=new_data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
 
     def test_lessons_list(self):
         """Тестирование просмотра списка уроков."""
@@ -194,7 +202,9 @@ class LessonTestsCase(APITestCase):
         # Проверяем, что в списке вернулся именно наш урок из setUp
         self.assertEqual(response.data["results"][0]["title"], self.lesson.title)
 
-        self.client.force_authenticate(user=None) # Очистка при переходе к другому пользователю
+        self.client.force_authenticate(
+            user=None
+        )  # Очистка при переходе к другому пользователю
 
         # Проверяем, что модератор может посмотреть список уроков
         self.client.force_authenticate(user=self.user_moderator)
@@ -205,7 +215,6 @@ class LessonTestsCase(APITestCase):
         self.assertIn("results", response.data)
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["title"], self.lesson.title)
-
 
     def test_subscription_management(self):
         """Тестирование оформления подписки."""

@@ -43,6 +43,10 @@ urlpatterns = [
     # Маршрут для просмотра урока
     path("lessons/<int:pk>/", LessonRetrieveAPIView.as_view(), name="lesson_detail"),
     # Маршрут для включения/выключения подписки
-    path("courses/<int:course_id>/subscribe/", SubscribeAPIView.as_view(), name="course_subscribe"),
+    path(
+        "courses/<int:course_id>/subscribe/",
+        SubscribeAPIView.as_view(),
+        name="course_subscribe",
+    ),
 ]
 urlpatterns += router.urls
