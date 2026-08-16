@@ -9,7 +9,8 @@
 from django.db import transaction
 from rest_framework import serializers
 
-from aurora.models import Lesson, Course
+from aurora.models import Lesson, Course, Subscribe
+from aurora.validators import validator_allowed_words
 
 
 class LessonBulkCreateListSerializer(serializers.ListSerializer):
@@ -36,6 +37,14 @@ class LessonBulkCreateListSerializer(serializers.ListSerializer):
 
 class LessonSerializer(serializers.ModelSerializer):
     """Сериализатор урока."""
+
+    # Назначаем валидатор на поле для внешней ссылки
+    external_link = serializers.URLField(
+        validators=[validator_allowed_words],
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+    )
 
     class Meta:
         """Конфигурация полей сериализатора."""
@@ -66,6 +75,26 @@ class CourseSerializer(serializers.ModelSerializer):
     # Для информации об уроках используем готовый сериализатор
     lesson_information = LessonSerializer(source="lessons", many=True, read_only=True)
 
+    # Выводим информацию о подписке
+    course_subscription = serializers.SerializerMethodField()
+
+    def get_course_subscription(self, obj):
+        """Возвращаем True если у пользователя есть подписка на курс, иначе False."""
+        # Безопасно получаем request из контекста
+        request = self.context.get("request")
+
+        if (
+            not request or request.user.is_anonymous
+        ):  # Проверка на незарегистрированного пользователя
+            return False
+
+        # Получаем флаг подписки есть/нет
+        is_subscribe = obj.subscribes.filter(
+            user=request.user, is_archived=False
+        ).exists()
+
+        return True if is_subscribe else False
+
     class Meta:
         """Конфигурация полей сериализатора."""
 
@@ -75,11 +104,24 @@ class CourseSerializer(serializers.ModelSerializer):
             "title",
             "preview",
             "description",
+            "course_subscription",
             "is_archived",
             "author",
             "quantity_lessons",
             "lesson_information",
         )
+
+
+class SubscribeSerializer(serializers.ModelSerializer):
+    """Сериализтор для работы с подписками пользователя."""
+
+    class Meta:
+        """Класс метаданных."""
+
+        model = Subscribe
+        fields = ["id", "user", "course", "is_archived"]
+        # Делаем поля доступными только на чтение, чтобы Swagger не требовал их в POST-запросе
+        read_only_fields = ["user", "course", "is_archived"]
 
 
 # class CourseSerializer(serializers.ModelSerializer):

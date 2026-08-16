@@ -7,6 +7,7 @@
 
 from django.contrib.auth.models import update_last_login
 from django_filters.rest_framework import DjangoFilterBackend
+from pyexpat.errors import messages
 from rest_framework.filters import OrderingFilter
 from rest_framework.generics import (
     RetrieveUpdateAPIView,
@@ -16,6 +17,7 @@ from rest_framework.generics import (
     RetrieveAPIView,
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.views import APIView
 
 from users.models import Payments, CustomUser
 from users.serializers import (
