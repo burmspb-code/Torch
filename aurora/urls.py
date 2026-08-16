@@ -6,8 +6,10 @@
   на базе ViewSet.
 - Маршруты для уроков (Lesson) прописаны вручную с использованием Generic Views
   для разделения логики операций.
+- Маршрут для включения/выключения подписки на курс.
 """
 
+from django.urls import include
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
@@ -28,25 +30,16 @@ router = SimpleRouter()
 router.register("courses", CourseViewSet, basename="courses")
 
 urlpatterns = [
-    # Маршрут для просмотра списка уроков
+    # Маршруты для уроков (CRUD)
     path("lessons/", LessonListAPIView.as_view(), name="lesson_list"),
-    # Маршрут для создания урока
     path("lessons/create/", LessonCreateAPIView.as_view(), name="lesson_create"),
-    # Маршрут для обновления урока
-    path(
-        "lessons/<int:pk>/update/", LessonUpdateAPIView.as_view(), name="lesson_update"
-    ),
-    # Маршрут для удаления урока
-    path(
-        "lessons/<int:pk>/delete/", LessonDestroyAPIView.as_view(), name="lesson_delete"
-    ),
-    # Маршрут для просмотра урока
+    path("lessons/<int:pk>/update/", LessonUpdateAPIView.as_view(), name="lesson_update"),
+    path("lessons/<int:pk>/delete/", LessonDestroyAPIView.as_view(), name="lesson_delete"),
     path("lessons/<int:pk>/", LessonRetrieveAPIView.as_view(), name="lesson_detail"),
+
     # Маршрут для включения/выключения подписки
-    path(
-        "courses/<int:course_id>/subscribe/",
-        SubscribeAPIView.as_view(),
-        name="course_subscribe",
-    ),
+    path("courses/<int:course_id>/subscribe/", SubscribeAPIView.as_view(), name="course_subscribe"),
+
+    # Автоматические маршруты для курсов
+    path("", include(router.urls)),
 ]
-urlpatterns += router.urls

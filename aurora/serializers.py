@@ -17,20 +17,12 @@ class LessonBulkCreateListSerializer(serializers.ListSerializer):
     """Кастомный класс для обработки списка при массовом создании уроков."""
 
     def create(self, validated_data):
-        """Создание списка уроков с заполнением автора."""
-
-        # Автоматически берем текущего юзера из контекста запроса
-        user = self.context["request"].user
-
-        # Заполняем автора для каждого урока в списке
-        for item in validated_data:
-            if not item.get("author"):
-                item["author"] = user
-
-        # Создаем объекты в памяти
+        # Автор уже находится внутри validated_data благодаря View.
         lessons = [Lesson(**item) for item in validated_data]
 
-        # Сохраняем в базу за один SQL-запрос внутри транзакции
+        # Сохраняем в базу за один SQL-запрос внутри транзакции.
+        # Во время генерации схемы Redoc этот метод не вызывается,
+        # поэтому база данных защищена от ошибок.
         with transaction.atomic():
             return Lesson.objects.bulk_create(lessons)
 
@@ -56,15 +48,6 @@ class LessonSerializer(serializers.ModelSerializer):
             "author": {"required": False}  # Поле 'author' не обязательно в JSON
         }
 
-    def create(self, validated_data):
-        """Логика для одиночного создания (если пришел один JSON-объект)."""
-        user = self.context["request"].user
-
-        if not validated_data.get("author"):
-            validated_data["author"] = user
-
-        return super().create(validated_data)
-
 
 class CourseSerializer(serializers.ModelSerializer):
     """Сериализатор курса, включающий агрегированные данные о количестве уроков."""
@@ -78,8 +61,9 @@ class CourseSerializer(serializers.ModelSerializer):
     # Выводим информацию о подписке
     course_subscription = serializers.SerializerMethodField()
 
-    def get_course_subscription(self, obj):
+    def get_course_subscription(self, obj) -> bool:
         """Возвращаем True если у пользователя есть подписка на курс, иначе False."""
+
         # Безопасно получаем request из контекста
         request = self.context.get("request")
 

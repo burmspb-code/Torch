@@ -7,17 +7,14 @@
 
 from django.contrib.auth.models import update_last_login
 from django_filters.rest_framework import DjangoFilterBackend
-from pyexpat.errors import messages
 from rest_framework.filters import OrderingFilter
 from rest_framework.generics import (
-    RetrieveUpdateAPIView,
     ListAPIView,
     CreateAPIView,
-    DestroyAPIView,
     RetrieveAPIView,
+    RetrieveUpdateDestroyAPIView,
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.views import APIView
 
 from users.models import Payments, CustomUser
 from users.serializers import (
@@ -39,62 +36,40 @@ class UserCreateAPIView(CreateAPIView):
     permission_classes = [AllowAny]
 
 
-class UserProfileAPIView(RetrieveUpdateAPIView):
+class CurrentUserProfileAPIView(RetrieveUpdateDestroyAPIView):
     """
-    API-представление для просмотра и безопасного редактирования профиля текущего пользователя.
-    """
+    API для работы с ЛИЧНЫМ профилем текущего пользователя.
 
+    Поддерживает:
+    - GET: Просмотр своих приватных данных.
+    - PUT/PATCH: Безопасное редактирование своего профиля.
+    - DELETE: Удаление собственного аккаунта.
+
+    ID в URL не требуется, все операции идут строго через сессию/JWT токен.
+    """
     serializer_class = UserSerializer
+    permission_classes = (IsAuthenticated,)
 
     def get_object(self):
         """Возвращает объект пользователя, выполняющего текущий запрос."""
         return self.request.user
 
-    # Переопределяем метод успешного выполнения PATCH/PUT запроса:
     def perform_update(self, serializer):
-        """Сохраняет данные и принудительно обновляет last_login пользователя."""
+        """Сохраняет данные и обновляет last_login пользователя."""
         super().perform_update(serializer)
-        # Вызываем встроенную функцию Django для обновления таймстампа
+        # Обновляем логин при каждом редактировании
         update_last_login(None, self.request.user)
 
 
-class UserRetrieveAPIView(RetrieveAPIView):
+class UserPublicRetrieveAPIView(RetrieveAPIView):
     """
-    API-представления для просмотра профиля любого пользователя.
-    """
+    API для просмотра ПУБЛИЧНОГО профиля любого пользователя платформы по его ID.
 
+    Возвращает только безопасные (открытые) данные пользователя.
+    """
     queryset = CustomUser.objects.all()
+    serializer_class = UserPublicProfileSerializer  # Всегда отдаем только публичный сериализатор
     permission_classes = (IsAuthenticated,)
-
-    def get_serializer_class(self):
-        # Получаем текущего авторизованного пользователя
-        user = self.request.user
-
-        # Безопасно достаем pk запрашиваемого профиля из URL-адреса
-        # self.kwargs хранит все переменные из вашего пути path('profile/<int:pk>/', ...)
-        requested_pk = self.kwargs.get("pk")
-
-        # Сравниваем ID
-        # Если запрашивают свой профиль, либо запрашивает админ/модератор
-        if str(requested_pk) == str(user.pk) or user.is_staff or user.is_moderator:
-            return UserSerializer
-
-        # Всем остальным — урезанную версию
-        return UserPublicProfileSerializer
-
-
-class UserDeleteAPIView(DestroyAPIView):
-    """
-    API-представление для удаления текущего пользователя.
-    """
-
-    queryset = CustomUser.objects.all()
-    serializer_class = UserSerializer
-
-    def get_object(self):
-        """Возвращает объект текущего пользователя для удаления."""
-        # Благодаря этому, юзер удалит именно себя, а не кого-то другого по ID
-        return self.request.user
 
 
 class PaymentsListAPIView(ListAPIView):
@@ -120,5 +95,9 @@ class PaymentsListAPIView(ListAPIView):
 
     def get_queryset(self):
         """Возвращает все платежи польщователя."""
+        # ЗАЩИТА ДЛЯ SWAGGER: Если схему генерирует робот, возвращаем пустую выборку
+        if getattr(self, "swagger_fake_view", False):
+            return Payments.objects.none()
+
         # Оптимизирует запрос, подгружая данные пользователя за один SQL-запрос
         return Payments.objects.filter(user=self.request.user).select_related("user")
