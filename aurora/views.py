@@ -192,7 +192,10 @@ class LessonListAPIView(ListAPIView):
         "Просматривать информацию об уроке могут авторы и модераторы."
     ),
     responses={
-        200: LessonSerializer,
+        200: OpenApiResponse(
+            response=LessonSerializer,
+            description="Информаци об уроке успешно получена."
+        ),
         401: OpenApiResponse(description="Неавторизованный доступ (отсутствует или неверен токен)."),
         403: OpenApiResponse(description="Доступ запрещен (вы не являетесь автором этого урока или модератором)."),
         404: OpenApiResponse(description="Урок с указанным ID не найден.")
