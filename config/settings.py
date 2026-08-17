@@ -131,14 +131,13 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Aurora API',
-    'DESCRIPTION': 'Документация платформы Aurora',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
-
+    "TITLE": "Aurora API",
+    "DESCRIPTION": "Документация платформы Aurora",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
     # ВОТ ЭТОТ ПАРАМЕТР ВКЛЮЧАЕТ СОРТИРОВКУ ТЕГОВ ПО АЛФАВИТУ В REDOC
-    'REDOC_UI_SETTINGS': {
-        'sortTagsAlphabetically': True,
+    "REDOC_UI_SETTINGS": {
+        "sortTagsAlphabetically": True,
     },
 }
 
@@ -146,3 +145,7 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
+
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")

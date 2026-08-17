@@ -26,6 +26,26 @@ class PaymentSerializer(serializers.ModelSerializer):
             "paid_lesson",
             "payment_amount",
             "payment_method",
+            "status",
+            "session_id",
+        )
+
+
+class PaymentCreateSerializer(serializers.ModelSerializer):
+    """Сериализатор для создания нового платежа через Stripe."""
+
+    class Meta:
+        model = Payments
+        fields = "__all__"
+        # Перечисляем поля, которые заполним сами
+        # Их фронтенд передавать в JSON-теле НЕ должен.
+        read_only_fields = (
+            "id",
+            "user",
+            "payment_date",
+            "payment_method",  # Мы сами жестко пропишем "stripe" во вьюхе
+            "status",  # Поставим "pending" во вьюхе
+            "session_id",  # Запишем ID из Stripe API
         )
 
 

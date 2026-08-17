@@ -13,9 +13,9 @@ def validator_allowed_words(value):
         return
 
     try:
-        parse_url = urlparse(str(value).strip()) # Парсим ссылку
+        parse_url = urlparse(str(value).strip())  # Парсим ссылку
 
-        host_name = parse_url.hostname # Получаем домен
+        host_name = parse_url.hostname  # Получаем домен
 
         if not host_name:
             raise ValidationError("Передана не корректная ссылка")

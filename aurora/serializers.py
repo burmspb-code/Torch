@@ -6,6 +6,8 @@
 с валидацией входящих параметров.
 """
 
+from decimal import Decimal
+
 from django.db import transaction
 from rest_framework import serializers
 
@@ -38,11 +40,30 @@ class LessonSerializer(serializers.ModelSerializer):
         allow_blank=True,
     )
 
+    # Явно указываем min_value на уровне сериализатора для корректного Swagger
+    price = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal(
+            "0.00"
+        ),  # Это уберет знак минус из регулярного выражения в схеме!
+    )
+
     class Meta:
         """Конфигурация полей сериализатора."""
 
         model = Lesson
-        fields = "__all__"
+        fields = (
+            "id",
+            "title",
+            "description",
+            "preview",
+            "external_link",
+            "price",
+            "is_archived",
+            "course",
+            "author",
+        )
         list_serializer_class = LessonBulkCreateListSerializer
         extra_kwargs = {
             "author": {"required": False}  # Поле 'author' не обязательно в JSON
@@ -51,6 +72,9 @@ class LessonSerializer(serializers.ModelSerializer):
 
 class CourseSerializer(serializers.ModelSerializer):
     """Сериализатор курса, включающий агрегированные данные о количестве уроков."""
+
+    # DRF автоматически вызовет метод @property price из модели Course
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     # Просто указываем поле как IntegerField, Django сам возьмет его из annotate
     quantity_lessons = serializers.IntegerField(read_only=True)
@@ -88,6 +112,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "title",
             "preview",
             "description",
+            "price",
             "course_subscription",
             "is_archived",
             "author",

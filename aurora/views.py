@@ -9,7 +9,12 @@
 """
 
 from django.db.models import Count
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiParameter
+from drf_spectacular.utils import (
+    extend_schema,
+    extend_schema_view,
+    OpenApiResponse,
+    OpenApiParameter,
+)
 from rest_framework import status
 from rest_framework.generics import (
     CreateAPIView,
@@ -35,38 +40,49 @@ from users.permissions import IsModerPermission, IsOwnerPermission
         summary="Получить список курсов",
         description="Возвращает список курсов. Администраторы и модераторы видят все курсы, обычные пользователи — только созданные ими.",
         responses={200: CourseSerializer(many=True)},
-        tags=["Курсы"]  # Группирует эндпоинты в интерфейсе Redoc в одну вкладку
+        tags=["Курсы"],  # Группирует эндпоинты в интерфейсе Redoc в одну вкладку
     ),
     create=extend_schema(
         summary="Создать новый курс",
         description="Создает новый обучающий курс. Доступно администраторам и обычным пользователям (модераторам доступ запрещен). Текущий пользователь автоматически становится автором.",
         responses={201: CourseSerializer},
-        tags=["Курсы"]
+        tags=["Курсы"],
     ),
     retrieve=extend_schema(
         summary="Просмотреть детали курса",
         description="Возвращает подробную информацию о конкретном курсе по его ID. Доступно модераторам или автору курса.",
-        responses={200: CourseSerializer, 404: OpenApiResponse(description="Курс не найден")},
-        tags=["Курсы"]
+        responses={
+            200: CourseSerializer,
+            404: OpenApiResponse(description="Курс не найден"),
+        },
+        tags=["Курсы"],
     ),
     update=extend_schema(
         summary="Полностью обновить курс",
         description="Полное обновление всех полей курса. Доступно модераторам или автору курса.",
-        responses={200: CourseSerializer, 404: OpenApiResponse(description="Курс не найден")},
-        tags=["Курсы"]
+        responses={
+            200: CourseSerializer,
+            404: OpenApiResponse(description="Курс не найден"),
+        },
+        tags=["Курсы"],
     ),
     partial_update=extend_schema(
         summary="Частично обновить курс",
         description="Изменение отдельных полей курса (PATCH). Доступно модераторам или автору курса.",
-        responses={200: CourseSerializer, 404: OpenApiResponse(description="Курс не найден")},
-        tags=["Курсы"]
+        responses={
+            200: CourseSerializer,
+            404: OpenApiResponse(description="Курс не найден"),
+        },
+        tags=["Курсы"],
     ),
     destroy=extend_schema(
         summary="Удалить курс",
         description="Удаляет курс из системы. Операция доступна только администраторам или автору курса.",
-        responses={204: OpenApiResponse(description="Курс успешно удален"),
-                   404: OpenApiResponse(description="Курс не найден")},
-        tags=["Курсы"]
+        responses={
+            204: OpenApiResponse(description="Курс успешно удален"),
+            404: OpenApiResponse(description="Курс не найден"),
+        },
+        tags=["Курсы"],
     ),
 )
 class CourseViewSet(ModelViewSet):
@@ -102,11 +118,15 @@ class CourseViewSet(ModelViewSet):
 
     def get_queryset(self):
         # ЗАЩИТА ДЛЯ SWAGGER: если схему генерирует робот, отдаем пустой кверисет
-        if getattr(self, "swagger_fake_view", False) or 'spectacular' in str(self.request):
+        if getattr(self, "swagger_fake_view", False) or "spectacular" in str(
+            self.request
+        ):
             return Course.objects.none()
 
         # Базовый кверисет с решенной проблемой N+1
-        base_queryset = Course.objects.annotate(quantity_lessons=Count("lessons"))
+        base_queryset = Course.objects.annotate(
+            quantity_lessons=Count("lessons")
+        ).order_by("-id")
         user = self.request.user
 
         if user.is_staff or user.is_moderator:
@@ -122,6 +142,7 @@ class CourseViewSet(ModelViewSet):
 
 # ============================ CRUD для Уроков через Generics ==========================================
 
+
 @extend_schema(
     summary="Создание урока или массовое создание списка уроков",
     description=(
@@ -132,12 +153,16 @@ class CourseViewSet(ModelViewSet):
     responses={
         201: OpenApiResponse(
             response=LessonSerializer(many=True),
-            description="Урок(и) успешно создан(ы). Возвращает список созданных объектов."
+            description="Урок(и) успешно создан(ы). Возвращает список созданных объектов.",
         ),
-        401: OpenApiResponse(description="Неавторизованный доступ (отсутствует или неверен токен)."),
-        403: OpenApiResponse(description="Доступ запрещен (модераторам запрещено создавать уроки).")
+        401: OpenApiResponse(
+            description="Неавторизованный доступ (отсутствует или неверен токен)."
+        ),
+        403: OpenApiResponse(
+            description="Доступ запрещен (модераторам запрещено создавать уроки)."
+        ),
     },
-    tags=["Уроки"]
+    tags=["Уроки"],
 )
 class LessonCreateAPIView(BulkCreateModelMixin, CreateAPIView):
     queryset = Lesson.objects.all()
@@ -150,6 +175,7 @@ class LessonCreateAPIView(BulkCreateModelMixin, CreateAPIView):
         # при этом генератор документации Redoc отработает идеально.
         serializer.save(author=self.request.user)
 
+
 @extend_schema(
     summary="Получить список уроков",
     description=(
@@ -159,9 +185,11 @@ class LessonCreateAPIView(BulkCreateModelMixin, CreateAPIView):
     ),
     responses={
         200: LessonSerializer(many=True),
-        401: OpenApiResponse(description="Неавторизованный доступ (отсутствует или неверен токен)")
+        401: OpenApiResponse(
+            description="Неавторизованный доступ (отсутствует или неверен токен)"
+        ),
     },
-    tags=["Уроки"]  # Группирует эндпоинты в интерфейсе Redoc в одну вкладку
+    tags=["Уроки"],  # Группирует эндпоинты в интерфейсе Redoc в одну вкладку
 )
 class LessonListAPIView(ListAPIView):
     """Эндпоинт для просмотра списка всех уроков."""
@@ -176,7 +204,9 @@ class LessonListAPIView(ListAPIView):
         """Фильтруем список уроков под конкретного пользователя."""
         # ЗАЩИТА ДЛЯ REDOC: если метод вызван роботом-генератором,
         # сразу возвращаем пустой кверисет, не двигаясь дальше по коду.
-        if getattr(self, "swagger_fake_view", False) or 'spectacular' in str(self.request):
+        if getattr(self, "swagger_fake_view", False) or "spectacular" in str(
+            self.request
+        ):
             return Lesson.objects.none()
 
         user = self.request.user
@@ -186,21 +216,24 @@ class LessonListAPIView(ListAPIView):
 
         return Lesson.objects.filter(author=user)
 
+
 @extend_schema(
     summary="Просмотр детальной информации об уроке.",
-    description=(
-        "Просматривать информацию об уроке могут авторы и модераторы."
-    ),
+    description=("Просматривать информацию об уроке могут авторы и модераторы."),
     responses={
         200: OpenApiResponse(
             response=LessonSerializer,
-            description="Информаци об уроке успешно получена."
+            description="Информаци об уроке успешно получена.",
         ),
-        401: OpenApiResponse(description="Неавторизованный доступ (отсутствует или неверен токен)."),
-        403: OpenApiResponse(description="Доступ запрещен (вы не являетесь автором этого урока или модератором)."),
-        404: OpenApiResponse(description="Урок с указанным ID не найден.")
+        401: OpenApiResponse(
+            description="Неавторизованный доступ (отсутствует или неверен токен)."
+        ),
+        403: OpenApiResponse(
+            description="Доступ запрещен (вы не являетесь автором этого урока или модератором)."
+        ),
+        404: OpenApiResponse(description="Урок с указанным ID не найден."),
     },
-    tags=["Уроки"]  # Группирует эндпоинты в интерфейсе Redoc в одну вкладку
+    tags=["Уроки"],  # Группирует эндпоинты в интерфейсе Redoc в одну вкладку
 )
 class LessonRetrieveAPIView(RetrieveAPIView):
     """Эндпоинт для просмотра детальной информации об одном уроке."""
@@ -214,25 +247,27 @@ class LessonRetrieveAPIView(RetrieveAPIView):
 @extend_schema_view(
     update=extend_schema(
         summary="Полностью обновить урок",
-        description="Полное обновление всех параметров урока (PUT). Доступно только автору урока или модератору."
+        description="Полное обновление всех параметров урока (PUT). Доступно только автору урока или модератору.",
     ),
     partial_update=extend_schema(
         summary="Частично обновить урок",
-        description="Изменение отдельных полей урока (PATCH). Доступно только автору урока или модератору."
-    )
+        description="Изменение отдельных полей урока (PATCH). Доступно только автору урока или модератору.",
+    ),
 )
 @extend_schema(
     summary="Редактирование информации об уроке.",
-    description=(
-        "Редактировать информацию об уроке могут авторы и модераторы."
-    ),
+    description=("Редактировать информацию об уроке могут авторы и модераторы."),
     responses={
         200: LessonSerializer,
-        401: OpenApiResponse(description="Неавторизованный доступ (отсутствует или неверен токен)."),
-        403: OpenApiResponse(description="Доступ запрещен (вы не являетесь автором этого урока или модератором)."),
-        404: OpenApiResponse(description="Урок с указанным ID не найден.")
+        401: OpenApiResponse(
+            description="Неавторизованный доступ (отсутствует или неверен токен)."
+        ),
+        403: OpenApiResponse(
+            description="Доступ запрещен (вы не являетесь автором этого урока или модератором)."
+        ),
+        404: OpenApiResponse(description="Урок с указанным ID не найден."),
     },
-    tags=["Уроки"]  # Группирует эндпоинты в интерфейсе Redoc в одну вкладку
+    tags=["Уроки"],  # Группирует эндпоинты в интерфейсе Redoc в одну вкладку
 )
 class LessonUpdateAPIView(UpdateAPIView):
     """Эндпоинт для редактирования параметров урока."""
@@ -245,16 +280,18 @@ class LessonUpdateAPIView(UpdateAPIView):
 
 @extend_schema(
     summary="Удаление урока.",
-    description=(
-        "Удалить урок может только администратор."
-    ),
+    description=("Удалить урок может только администратор."),
     responses={
         204: LessonSerializer,
-        401: OpenApiResponse(description="Неавторизованный доступ (отсутствует или неверен токен)."),
-        403: OpenApiResponse(description="Доступ запрещен (вы не являетесь администратором)."),
-        404: OpenApiResponse(description="Урок с указанным ID не найден.")
+        401: OpenApiResponse(
+            description="Неавторизованный доступ (отсутствует или неверен токен)."
+        ),
+        403: OpenApiResponse(
+            description="Доступ запрещен (вы не являетесь администратором)."
+        ),
+        404: OpenApiResponse(description="Урок с указанным ID не найден."),
     },
-    tags=["Уроки"]  # Группирует эндпоинты в интерфейсе Redoc в одну вкладку
+    tags=["Уроки"],  # Группирует эндпоинты в интерфейсе Redoc в одну вкладку
 )
 class LessonDestroyAPIView(DestroyAPIView):
     """Эндпоинт для удаления урока из системы."""
@@ -297,15 +334,14 @@ class SubscribeAPIView(APIView):
                 examples={
                     "application/json": {
                         "message": "Подписка успешно добавлена",
-                        "is_subscribed": True
+                        "is_subscribed": True,
                     }
-                }
+                },
             ),
             401: OpenApiResponse(description="Пользователь не авторизован"),
-            404: OpenApiResponse(description="Указанный курс не найден")
-        }
+            404: OpenApiResponse(description="Указанный курс не найден"),
+        },
     )
-
     def post(self, request, *args, **kwargs):
         user = self.request.user  # Получаем пользователя
         course_id = kwargs.get("course_id")  # Получаем курс

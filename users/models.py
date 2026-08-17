@@ -100,6 +100,12 @@ class CustomUser(PermissionsMixin, AbstractBaseUser):
 class Payments(models.Model):
     """Модель платежей."""
 
+    STATUS_CHOICES = [
+        ("pending", "Ожидает оплаты"),
+        ("succeeded", "Оплачено"),
+        ("failed", "Ошибка платежа"),
+    ]
+
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
@@ -148,6 +154,20 @@ class Payments(models.Model):
         choices=PAYMENT_METHODS,
         verbose_name="Способ оплаты",
         help_text="Выберите способ оплаты",
+    )
+    status = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        default="pending",
+        verbose_name="Статус платежа",
+    )
+    session_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="ID сессии",
+        help_text="Укажите ID сессии",
     )
 
     class Meta:
