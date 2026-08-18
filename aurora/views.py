@@ -34,18 +34,45 @@ from aurora.paginators import CoursePagination, LessonPagination
 from aurora.serializers import CourseSerializer, LessonSerializer, SubscribeSerializer
 from users.permissions import IsModerPermission, IsOwnerPermission
 
+# Выносим повторяющиеся схемы ответов для читаемости кода
+COMMON_ERRORS = {
+    401: OpenApiResponse(
+        description="Пользователь не аутентифицирован (Токен отсутствует или невалиден)"
+    ),
+    403: OpenApiResponse(
+        description="Недостаточно прав для выполнения данной операции"
+    ),
+}
+
+VALIDATION_ERROR = {
+    400: OpenApiResponse(
+        description="Ошибка валидации переданных данных (Неверный формат полей)"
+    )
+}
+
+NOT_FOUND_ERROR = {
+    404: OpenApiResponse(description="Запрашиваемый курс не найден в системе")
+}
+
 
 @extend_schema_view(
     list=extend_schema(
         summary="Получить список курсов",
         description="Возвращает список курсов. Администраторы и модераторы видят все курсы, обычные пользователи — только созданные ими.",
-        responses={200: CourseSerializer(many=True)},
-        tags=["Курсы"],  # Группирует эндпоинты в интерфейсе Redoc в одну вкладку
+        responses={
+            200: CourseSerializer(many=True),
+            **COMMON_ERRORS,  # Добавляет 401 и 403 ошибки
+        },
+        tags=["Курсы"],
     ),
     create=extend_schema(
         summary="Создать новый курс",
         description="Создает новый обучающий курс. Доступно администраторам и обычным пользователям (модераторам доступ запрещен). Текущий пользователь автоматически становится автором.",
-        responses={201: CourseSerializer},
+        responses={
+            201: CourseSerializer,
+            **VALIDATION_ERROR,  # Добавляет 400
+            **COMMON_ERRORS,  # Добавляет 401 и 403
+        },
         tags=["Курсы"],
     ),
     retrieve=extend_schema(
@@ -53,7 +80,8 @@ from users.permissions import IsModerPermission, IsOwnerPermission
         description="Возвращает подробную информацию о конкретном курсе по его ID. Доступно модераторам или автору курса.",
         responses={
             200: CourseSerializer,
-            404: OpenApiResponse(description="Курс не найден"),
+            **NOT_FOUND_ERROR,  # Добавляет 404
+            **COMMON_ERRORS,  # Добавляет 401 и 403
         },
         tags=["Курсы"],
     ),
@@ -62,7 +90,9 @@ from users.permissions import IsModerPermission, IsOwnerPermission
         description="Полное обновление всех полей курса. Доступно модераторам или автору курса.",
         responses={
             200: CourseSerializer,
-            404: OpenApiResponse(description="Курс не найден"),
+            **VALIDATION_ERROR,  # Добавляет 400
+            **NOT_FOUND_ERROR,  # Добавляет 404
+            **COMMON_ERRORS,  # Добавляет 401 и 403
         },
         tags=["Курсы"],
     ),
@@ -71,7 +101,9 @@ from users.permissions import IsModerPermission, IsOwnerPermission
         description="Изменение отдельных полей курса (PATCH). Доступно модераторам или автору курса.",
         responses={
             200: CourseSerializer,
-            404: OpenApiResponse(description="Курс не найден"),
+            **VALIDATION_ERROR,  # Добавляет 400
+            **NOT_FOUND_ERROR,  # Добавляет 404
+            **COMMON_ERRORS,  # Добавляет 401 и 403
         },
         tags=["Курсы"],
     ),
@@ -80,7 +112,8 @@ from users.permissions import IsModerPermission, IsOwnerPermission
         description="Удаляет курс из системы. Операция доступна только администраторам или автору курса.",
         responses={
             204: OpenApiResponse(description="Курс успешно удален"),
-            404: OpenApiResponse(description="Курс не найден"),
+            **NOT_FOUND_ERROR,  # Добавляет 404
+            **COMMON_ERRORS,  # Добавляет 401 и 403
         },
         tags=["Курсы"],
     ),
@@ -211,7 +244,7 @@ class LessonListAPIView(ListAPIView):
 
         user = self.request.user
 
-        if user.is_moderator:
+        if user.is_moderator or user.is_superuser:
             return Lesson.objects.all()
 
         return Lesson.objects.filter(author=user)

@@ -37,15 +37,19 @@ class PaymentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payments
         fields = "__all__"
-        # Перечисляем поля, которые заполним сами
-        # Их фронтенд передавать в JSON-теле НЕ должен.
+
+        # Перечисляем поля, которые заполняются сервером автоматически.
+        # Фронтенд передавать их в JSON-теле НЕ должен, но увидит в ответе (201 Created).
         read_only_fields = (
             "id",
             "user",
             "payment_date",
-            "payment_method",  # Мы сами жестко пропишем "stripe" во вьюхе
-            "status",  # Поставим "pending" во вьюхе
-            "session_id",  # Запишем ID из Stripe API
+            "payment_method",  # Автоматически прописывается "stripe" в View
+            "status",  # Автоматически ставится "pending" в View
+            "stripe_product_id",  # ID созданного продукта в Stripe
+            "stripe_price_id",  # ID созданной цены в Stripe
+            "stripe_session_id",  # ID сессии оплаты Stripe Checkout
+            "payment_url",  # Живая ссылка для редиректа пользователя на оплату
         )
 
 

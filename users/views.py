@@ -41,9 +41,6 @@ from users.serializers import (
 )
 from .services import StripePaymentService
 
-# Создаем один экземпляр сервиса для работы
-stripe_service = StripePaymentService()
-
 
 @extend_schema(
     summary="Регистрация нового пользователя",
@@ -132,7 +129,7 @@ class CurrentUserProfileAPIView(RetrieveUpdateDestroyAPIView):
 
 @extend_schema(
     summary="Просмотр публичной информации о пользователе.",
-    description=("Просматривать информацию могут только авторизованные пользователи."),
+    description="Просматривать информацию могут только авторизованные пользователи.",
     responses={
         200: OpenApiResponse(
             response=UserPublicProfileSerializer,
@@ -167,7 +164,7 @@ class UserPublicRetrieveAPIView(RetrieveAPIView):
     ),
     responses={
         201: OpenApiResponse(
-            response=PaymentCreateSerializer,  # ИСПРАВЛЕНО: возвращаем схему платежа, а не юзера!
+            response=PaymentCreateSerializer,
             description="Платеж успешно создан. В ответе содержится payment_url для редиректа.",
         ),
         400: OpenApiResponse(description="Ошибка валидации входных данных."),
@@ -175,7 +172,7 @@ class UserPublicRetrieveAPIView(RetrieveAPIView):
             description="Пользователь не авторизован (отсутствует JWT-токен)."
         ),
     },
-    tags=["Профиль"],  # Объединено в одну группу с профилями, как в вашем условии
+    tags=["Профиль"],
 )
 class PaymentCreateAPIView(CreateAPIView):
     """
@@ -187,8 +184,6 @@ class PaymentCreateAPIView(CreateAPIView):
     queryset = Payments.objects.all()
     permission_classes = (IsAuthenticated,)
 
-    payment_url = None
-
     def perform_create(self, serializer):
         # Сохраняем черновик платежа в базу со статусом ожидания
         payment_record = serializer.save(
@@ -196,47 +191,33 @@ class PaymentCreateAPIView(CreateAPIView):
         )
 
         try:
-            # Передаем объект платежа в наш сервис Stripe
-            session_id, payment_url = stripe_service.create_checkout_session(
-                payment_record
-            )
-
-            # Дописываем полученный session_id в модель и сохраняем изменения
-            payment_record.session_id = session_id
-            payment_record.save()
-
-            # Сохраняем ссылку в инстанс view для метода create
-            self.payment_url = payment_url
-
-            # ВОЗВРАЩАЕМ обновленный объект из базы, чтобы использовать его в методе create
-            return payment_record
+            # Инициализируем сервис локально
+            stripe_service = StripePaymentService()
+            stripe_service.create_checkout_session(payment_record)
 
         except RuntimeError as e:
+            # Если Stripe упал, удаляем черновик платежа, чтобы не копить мусор в БД
+            payment_record.delete()
             raise ValidationError({"error": str(e)})
 
     def create(self, request, *args, **kwargs):
-        """Переопределяем метод ответа, чтобы добавить в JSON живую ссылку на оплату."""
+        """Переопределяем метод ответа, чтобы вернуть JSON со всеми актуальными Stripe-полями."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Перехватываем обновленный инстанс из perform_create
-        payment_instance = self.perform_create(serializer)
+        # Вызов perform_create автоматически запишет созданный объект в serializer.instance
+        self.perform_create(serializer)
 
-        # Создаем НОВЫЙ сериализатор на основе актуального объекта из базы данных Aurora
-        final_serializer = self.get_serializer(payment_instance)
+        # Получаем свежие данные объекта (уже со всеми заполненными Stripe ID и payment_url)
+        headers = self.get_success_headers(serializer.data)
 
-        headers = self.get_success_headers(final_serializer.data)
-
-        # Теперь здесь будут все актуальные поля: и status, и session_id
-        response_data = final_serializer.data
-        response_data["payment_url"] = getattr(self, "payment_url", None)
-
-        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
+        # Возвращаем клиенту полный набор данных из сериализатора
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
 
-@extend_schema(
-    exclude=True
-)  # Эта строчка полностью скроет вебхук из Swagger-документации!
+@extend_schema(exclude=True)  # Полностью скрывает вебхук из Swagger-документации
 class StripeWebhookView(APIView):
     """
     API эндпоинт для приема уведомлений (вебхуков) от Stripe.
@@ -253,19 +234,21 @@ class StripeWebhookView(APIView):
         sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
 
         if not sig_header:
-            return HttpResponse("Missing signature", status=status.HTTP_400_BAD_REQUEST)
+            return Response("Missing signature", status=status.HTTP_400_BAD_REQUEST)
+
+        # Инициализируем сервисный слой перед использованием
+        payment_service = StripePaymentService()
 
         # Передаем сырые данные и подпись в сервисный слой для проверки и обработки
-        success = stripe_service.verify_and_process_webhook(payload, sig_header)
+        success = payment_service.verify_and_process_webhook(payload, sig_header)
 
         # Если проверка подписи прошла успешно и статус обновлен
         if success:
-            return HttpResponse(
-                "Webhook processed successfully", status=status.HTTP_200_OK
-            )
+            # ИСПРАВЛЕНО: Используем Response из DRF вместо HttpResponse
+            return Response("Webhook processed successfully", status=status.HTTP_200_OK)
 
         # Если подпись подделана или произошла ошибка
-        return HttpResponse(
+        return Response(
             "Invalid payload or signature", status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -318,15 +301,19 @@ class PaymentStatusCheckAPIView(APIView):
             )
 
         # Если у платежа нет session_id (например, платили наличными)
-        if not payment.session_id:
+        if not payment.stripe_session_id:
             return Response(
                 {"error": "Для данного платежа не найдена сессия Stripe."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
+            # Инициализируем сервис локально
+            stripe_service = StripePaymentService()
             # Запрашиваем актуальный статус у Stripe API через наш сервис
-            stripe_status = stripe_service.retrieve_checkout_session(payment.session_id)
+            stripe_status = stripe_service.retrieve_checkout_session(
+                payment.stripe_session_id
+            )
 
             # Если Stripe подтверждает, что сессия оплачена ('paid')
             if stripe_status == "paid":
