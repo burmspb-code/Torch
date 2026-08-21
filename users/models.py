@@ -98,25 +98,35 @@ class CustomUser(PermissionsMixin, AbstractBaseUser):
 
 
 class Payments(models.Model):
-    """Модель платежей."""
+    """Модель платежей платформы Aurora с поддержкой интеграции Stripe."""
+
+    STATUS_CHOICES = [
+        ("pending", "Ожидает оплаты"),
+        ("succeeded", "Оплачено"),
+        ("failed", "Ошибка платежа"),
+    ]
+
+    PAYMENT_METHODS = [
+        ("cash", "Наличные"),
+        ("transfer_to_account", "Перевод на счет"),
+        ("stripe", "Онлайн-оплата (Stripe)"),  # Добавили новый способ оплаты
+    ]
 
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
-        null=False,
-        blank=False,
         related_name="payments",
         verbose_name="Пользователь",
     )
     payment_date = models.DateField(
-        auto_now_add=True,  # Автоматически ставит текущую дату при создании
+        auto_now_add=True,
         verbose_name="Дата платежа",
     )
     paid_course = models.ForeignKey(
         Course,
         on_delete=models.SET_NULL,
-        blank=True,  # Может быть пустым, если оплачен отдельный урок
-        null=True,  # Обязательно True, так как on_delete=SET_NULL
+        blank=True,
+        null=True,
         related_name="payments",
         verbose_name="Оплаченный курс",
         help_text="Выберите курс для оплаты",
@@ -124,8 +134,8 @@ class Payments(models.Model):
     paid_lesson = models.ForeignKey(
         Lesson,
         on_delete=models.SET_NULL,
-        blank=True,  # Может быть пустым, если оплачен отдельный урок
-        null=True,  # Обязательно True, так как on_delete=SET_NULL
+        blank=True,
+        null=True,
         related_name="payments",
         verbose_name="Оплаченный урок",
         help_text="Выберите урок для оплаты",
@@ -134,20 +144,49 @@ class Payments(models.Model):
         decimal_places=2,
         default=0,
         max_digits=10,
-        null=False,
-        blank=False,
         verbose_name="Сумма оплаты",
         help_text="Укажите сумму платежа",
     )
-    PAYMENT_METHODS: list[tuple[str, str]] = [
-        ("cash", "Наличные"),
-        ("transfer_to_account", "Перевод на счет"),
-    ]
     payment_method = models.CharField(
         max_length=50,
         choices=PAYMENT_METHODS,
         verbose_name="Способ оплаты",
         help_text="Выберите способ оплаты",
+    )
+    status = models.CharField(
+        max_length=100,
+        choices=STATUS_CHOICES,  # Теперь привязано к STATUS_CHOICES для строгости данных
+        default="pending",
+        verbose_name="Статус платежа",
+    )
+
+    # === Новые поля интеграции с сервисом Stripe ===
+    stripe_product_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Stripe ID Продукта",
+        help_text="Идентификатор созданного продукта в системе Stripe",
+    )
+    stripe_price_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Stripe ID Цены",
+        help_text="Идентификатор стоимости продукта в системе Stripe",
+    )
+    stripe_session_id = models.CharField(
+        max_length=255,  # Изменили имя с session_id на stripe_session_id для ясности
+        blank=True,
+        null=True,
+        verbose_name="Stripe ID Сессии",
+        help_text="Идентификатор сессии оплаты Stripe Checkout",
+    )
+    payment_url = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Ссылка на оплату",
+        help_text="Прямая ссылка на платежную страницу Stripe Checkout",
     )
 
     class Meta:
@@ -157,4 +196,4 @@ class Payments(models.Model):
         verbose_name_plural = "Платежи"
 
     def __str__(self):
-        return f"Платеж {self.id} от {self.user} на сумму {self.payment_amount}"
+        return f"Платеж {self.id} от {self.user} на сумму {self.payment_amount} ({self.get_status_display()})"

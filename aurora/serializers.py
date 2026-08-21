@@ -6,6 +6,8 @@
 с валидацией входящих параметров.
 """
 
+from decimal import Decimal
+
 from django.db import transaction
 from rest_framework import serializers
 
@@ -17,20 +19,12 @@ class LessonBulkCreateListSerializer(serializers.ListSerializer):
     """Кастомный класс для обработки списка при массовом создании уроков."""
 
     def create(self, validated_data):
-        """Создание списка уроков с заполнением автора."""
-
-        # Автоматически берем текущего юзера из контекста запроса
-        user = self.context["request"].user
-
-        # Заполняем автора для каждого урока в списке
-        for item in validated_data:
-            if not item.get("author"):
-                item["author"] = user
-
-        # Создаем объекты в памяти
+        # Автор уже находится внутри validated_data благодаря View.
         lessons = [Lesson(**item) for item in validated_data]
 
-        # Сохраняем в базу за один SQL-запрос внутри транзакции
+        # Сохраняем в базу за один SQL-запрос внутри транзакции.
+        # Во время генерации схемы Redoc этот метод не вызывается,
+        # поэтому база данных защищена от ошибок.
         with transaction.atomic():
             return Lesson.objects.bulk_create(lessons)
 
@@ -46,28 +40,41 @@ class LessonSerializer(serializers.ModelSerializer):
         allow_blank=True,
     )
 
+    # Явно указываем min_value на уровне сериализатора для корректного Swagger
+    price = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal(
+            "0.00"
+        ),  # Это уберет знак минус из регулярного выражения в схеме!
+    )
+
     class Meta:
         """Конфигурация полей сериализатора."""
 
         model = Lesson
-        fields = "__all__"
+        fields = (
+            "id",
+            "title",
+            "description",
+            "preview",
+            "external_link",
+            "price",
+            "is_archived",
+            "course",
+            "author",
+        )
         list_serializer_class = LessonBulkCreateListSerializer
         extra_kwargs = {
             "author": {"required": False}  # Поле 'author' не обязательно в JSON
         }
 
-    def create(self, validated_data):
-        """Логика для одиночного создания (если пришел один JSON-объект)."""
-        user = self.context["request"].user
-
-        if not validated_data.get("author"):
-            validated_data["author"] = user
-
-        return super().create(validated_data)
-
 
 class CourseSerializer(serializers.ModelSerializer):
     """Сериализатор курса, включающий агрегированные данные о количестве уроков."""
+
+    # DRF автоматически вызовет метод @property price из модели Course
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     # Просто указываем поле как IntegerField, Django сам возьмет его из annotate
     quantity_lessons = serializers.IntegerField(read_only=True)
@@ -78,8 +85,9 @@ class CourseSerializer(serializers.ModelSerializer):
     # Выводим информацию о подписке
     course_subscription = serializers.SerializerMethodField()
 
-    def get_course_subscription(self, obj):
+    def get_course_subscription(self, obj) -> bool:
         """Возвращаем True если у пользователя есть подписка на курс, иначе False."""
+
         # Безопасно получаем request из контекста
         request = self.context.get("request")
 
@@ -104,6 +112,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "title",
             "preview",
             "description",
+            "price",
             "course_subscription",
             "is_archived",
             "author",

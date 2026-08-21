@@ -12,7 +12,10 @@
 """
 
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Sum
+from decimal import Decimal
 
 from config import settings
 
@@ -67,6 +70,7 @@ class Course(models.Model):
 
         verbose_name = "Курс"
         verbose_name_plural = "Курсы"
+        ordering = ["-id"]
 
     def __str__(self):
         return self.title
@@ -80,6 +84,12 @@ class Course(models.Model):
                     "author": "При создании нового курса необходимо обязательно указать автора."
                 }
             )
+
+    @property
+    def price(self):
+        """Динамический расчет цены в зависимости от уроков."""
+        amount = self.lessons.filter(is_archived=False).aggregate(total=Sum("price"))
+        return amount.get("total") or 0.00
 
 
 class Lesson(models.Model):
@@ -139,12 +149,21 @@ class Lesson(models.Model):
         help_text="Укажите автора урока",
         related_name="lessons",
     )
+    price = models.DecimalField(
+        decimal_places=2,
+        max_digits=10,
+        default=0,
+        validators=[MinValueValidator(Decimal(0.00))],  # Цена не может быть меньше 0.00
+        verbose_name="Стоимость урока",
+        help_text="Введите стоимость урока",
+    )
 
     class Meta:
         """Настройки отображения модели в административной панели."""
 
         verbose_name = "Урок"
         verbose_name_plural = "Уроки"
+        ordering = ["-id"]
 
     def __str__(self):
         return f"{self.course.title} - {self.title}"
@@ -189,6 +208,7 @@ class Subscribe(models.Model):
 
         verbose_name = "Подписка"
         verbose_name_plural = "Подписки"
+        ordering = ["-id"]
         # Гарантируем, что связь между юзером и курсом существует в единственном экземпляре
         constraints = [
             models.UniqueConstraint(

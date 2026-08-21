@@ -6,8 +6,10 @@
   на базе ViewSet.
 - Маршруты для уроков (Lesson) прописаны вручную с использованием Generic Views
   для разделения логики операций.
+- Маршрут для включения/выключения подписки на курс.
 """
 
+from django.urls import include
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
@@ -28,7 +30,7 @@ router = SimpleRouter()
 router.register("courses", CourseViewSet, basename="courses")
 
 urlpatterns = [
-    # Маршрут для просмотра списка уроков
+    # Маршруты для уроков (CRUD)
     path("lessons/", LessonListAPIView.as_view(), name="lesson_list"),
     # Маршрут для создания урока
     path("lessons/create/", LessonCreateAPIView.as_view(), name="lesson_create"),
@@ -48,5 +50,6 @@ urlpatterns = [
         SubscribeAPIView.as_view(),
         name="course_subscribe",
     ),
+    # Автоматические маршруты для курсов
+    path("", include(router.urls)),
 ]
-urlpatterns += router.urls
