@@ -33,6 +33,7 @@ from aurora.models import Course, Lesson, Subscribe
 from aurora.paginators import CoursePagination, LessonPagination
 from aurora.serializers import CourseSerializer, LessonSerializer, SubscribeSerializer
 from users.permissions import IsModerPermission, IsOwnerPermission
+from aurora.tasks import send_subscription_email
 
 # Выносим повторяющиеся схемы ответов для читаемости кода
 COMMON_ERRORS = {
@@ -380,7 +381,7 @@ class SubscribeAPIView(APIView):
         course_id = kwargs.get("course_id")  # Получаем курс
         subscribe_obj = Subscribe.objects.filter(
             user=user, course_id=course_id
-        ).first()  # Полуаем подписку
+        ).first()  # Получаем подписку
         # Выставляем флаг активности подсписки
         is_active = True if not subscribe_obj else subscribe_obj.is_archived
 
@@ -390,10 +391,23 @@ class SubscribeAPIView(APIView):
 
         if created:
             message = "Подписка успешно добавлена"
+            send_email_flag = True
         else:
-            message = (
-                "Подписка восстановлена" if is_active else "Подписка успешно удалена"
-            )
+            if is_active:
+                message = "Подписка восстановлена"
+                send_email_flag = True  # Отправляем письмо и при восстановлении
+            else:
+                message = "Подписка успешно удалена"
+                send_email_flag = False
+
+        # Отправляем письмо асинхронно, если подписка создана или восстановлена
+        if send_email_flag:
+            try:
+                course_title = Course.objects.get(id=course_id).title
+                # ВАЖНО: Используем .delay() для отправки в очередь Celery
+                send_subscription_email.delay(user.email, course_title)
+            except Course.DoesNotExist:
+                pass  # Защита на случай, если курс успели удалить
 
         return Response(
             {"message": message, "is_subscribed": is_active}, status=status.HTTP_200_OK

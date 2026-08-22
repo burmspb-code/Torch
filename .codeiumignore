@@ -1,0 +1,21 @@
+# Виртуальное окружение
+.venv/
+venv/
+env/
+
+# Кэш Python и PyCharm
+__pycache__/
+*.pyc
+.idea/
+
+# Папки зависимостей и сборки
+build/
+dist/
+*.egg-info/
+
+# Тяжелые файлы данных и логи
+*.log
+*.csv
+*.json
+*.sqlite3
+datasets/
