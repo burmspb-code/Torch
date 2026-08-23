@@ -2,7 +2,6 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
-from celery.schedules import crontab
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -165,9 +164,15 @@ CELERY_TASK_TRACK_STARTED = True
 
 # Расписание для автономных задач
 CELERY_BEAT_SCHEDULE = {
-    "check-reminders-every-minute": {
-        "task": "daily.tasks.check_daily_reminders",
-        "schedule": crontab(minute="*"),
+    # Название будильника (может быть любым уникальным текстом)
+    "check-course-updates-every-30-minutes": {
+
+        # ТОЧНЫЙ ПУТЬ до таски, оформленный в виде строки.
+        # Именно по этой строке Beat понимает, какую именно функцию вызвать!
+        "task": "aurora.tasks.check_course_updates_beat_task",
+
+        # Периодичность запуска (в данном случае каждые 30 минут)
+        "schedule": timedelta(minutes=30),
     },
 }
 

@@ -175,15 +175,6 @@ class CourseViewSet(ModelViewSet):
         """Автоматически назначает текущего пользователя автором курса при создании."""
         serializer.save(author=self.request.user)
 
-    def perform_update(self, serializer):
-        """Подключение сервисного слоя при обновлении курса."""
-        # Сохраняем изменения в БД
-        instance = serializer.save()
-        # Гарантируем, что Celery запустится ТОЛЬКО после успешного сохранения в БД
-        transaction.on_commit(
-            lambda: process_course_update(instance.id)
-        )
-
 # ============================ CRUD для Уроков через Generics ==========================================
 
 

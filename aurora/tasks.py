@@ -4,6 +4,8 @@ from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
 
+from aurora.services import process_course_updates_cron
+
 # Настройка логгера для отслеживания фоновых задач
 logger = logging.getLogger(__name__)
 
@@ -93,3 +95,9 @@ def send_course_subscription_email(self, email: str, course_title: str) -> bool:
         logger.error(f"Failed to send email to {email}: {exc}")
         # Автоматический перезапуск задачи при сбое почтового сервера
         raise self.retry(exc=exc)
+
+
+@shared_task(queue="default")
+def check_course_updates_beat_task():
+    """Периодическая задача Celery Beat, которая дергает сервисный слой."""
+    process_course_updates_cron()
