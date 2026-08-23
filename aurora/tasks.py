@@ -52,3 +52,44 @@ def send_subscription_email(
         logger.error(f"Failed to send email to {email}: {exc}")
         # Автоматический перезапуск задачи при сбое почтового сервера
         raise self.retry(exc=exc)
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    queue="emails",
+)
+def send_course_subscription_email(self, email: str, course_title: str) -> bool:
+    """Отправляет уведомление пользователю об обновлении курса, на который он подписан.
+
+    Args:
+        self (Task): Объект задачи Celery.
+        email (str): Адрес электронной почты получателя.
+        course_title (str): Наименование обновленного курса.
+
+    Returns:
+        bool: True, если письмо успешно отправлено.
+
+    Raises:
+        self.retry: Если отправка почты завершилась сетевой ошибкой
+            (задача перезапустится автоматически).
+    """
+    try:
+        send_mail(
+            subject="Уведомление об обновлении курса",
+            message=(
+                f"Курс «{course_title}» обновился. "
+                "Для ознакомления перейдите к материалам курса."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        logger.info(f"Email successfully sent to {email}")
+        return True
+
+    except Exception as exc:
+        logger.error(f"Failed to send email to {email}: {exc}")
+        # Автоматический перезапуск задачи при сбое почтового сервера
+        raise self.retry(exc=exc)

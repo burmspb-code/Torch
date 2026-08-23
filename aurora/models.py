@@ -64,6 +64,10 @@ class Course(models.Model):
         verbose_name="Автор",
         help_text="Укажите автора курса",
     )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Время последнего обновления"
+    )
 
     class Meta:
         """Настройки отображения модели в административной панели."""
@@ -156,6 +160,10 @@ class Lesson(models.Model):
         validators=[MinValueValidator(Decimal(0.00))],  # Цена не может быть меньше 0.00
         verbose_name="Стоимость урока",
         help_text="Введите стоимость урока",
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Время последнего обновления"
     )
 
     class Meta:

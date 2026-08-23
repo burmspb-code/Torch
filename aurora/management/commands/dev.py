@@ -12,11 +12,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS("=== Запуск локальной инфраструктуры (Docker + Django + Celery) ==="))
 
-        # Имя нашего Docker-контейнера для Redis
+        # Имя Docker-контейнера для Redis
         container_name = "torch"
         processes = {}
 
-        # 1. Проверяем наличие Docker в системе
+        # Проверяем наличие Docker в системе
         if not shutil.which("docker"):
             self.stdout.write(self.style.ERROR(
                 "Ошибка: Docker не найден в PATH системы! Убедитесь, что Docker Desktop установлен и запущен."
@@ -31,7 +31,7 @@ class Command(BaseCommand):
             )
 
             if container_name in check_container.stdout:
-                # Контейнер есть, просто запускаем его
+                # Контейнер есть, запускаем его
                 self.stdout.write(self.style.SUCCESS(f"-> Запуск существующего контейнера {container_name}..."))
                 subprocess.run(["docker", "start", container_name], check=True, capture_output=True)
             else:
@@ -55,14 +55,14 @@ class Command(BaseCommand):
         # Форсируем использование UTF-8 для всех потоков ввода-вывода Python
         current_env["PYTHONIOENCODING"] = "utf-8"
 
-        # 2. Команда для запуска Django
+        # Команда для запуска Django
         self.stdout.write(self.style.SUCCESS("-> Запуск Django сервера..."))
         processes['django'] = subprocess.Popen(
             [sys.executable, "manage.py", "runserver"],
             env=current_env  # <-- Передаем окружение
         )
 
-        # 3. Команда для запуска Celery
+        # Команда для запуска Celery
         self.stdout.write(self.style.SUCCESS("-> Запуск воркера Celery..."))
         processes['celery'] = subprocess.Popen([
             "celery", "-A", "config", "worker", "--loglevel=info", "-P", "threads", "-Q", "celery,emails"

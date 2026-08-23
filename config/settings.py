@@ -228,7 +228,7 @@ LOGGING = {
         },
     },
     "loggers": {
-        # Отключаем лишние Django логи в celery.log
+        # Отключаем лишние Django логи, чтобы они не спамили в консоль Celery
         "django.utils.autoreload": {
             "handlers": [],
             "level": "WARNING",
@@ -239,19 +239,13 @@ LOGGING = {
             "level": "ERROR",
             "propagate": False,
         },
-        # Логгер для вашего приложения (укажите имя вашей папки с тасками, например 'aurora')
+        # Корневой логгер приложения (покрывает 'aurora', 'aurora.tasks', 'aurora.views' и т.д.)
         "aurora": {
             "handlers": ["file", "console"],
             "level": "INFO",
-            "propagate": False,
+            "propagate": False,  # Запрещает передачу логов выше (например, в root логгер)
         },
-        # Логгер для модуля tasks (aurora.tasks)
-        "aurora.tasks": {
-            "handlers": ["file", "console"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        # На случай, если имя логгера в коде будет дефолтным (__name__)
+        # Системные логи самого Celery (воркеры, хартбиты, коннекты к брокеру)
         "celery": {
             "handlers": ["file", "console"],
             "level": "INFO",

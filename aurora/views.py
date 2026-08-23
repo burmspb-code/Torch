@@ -8,6 +8,7 @@
 - Управление подписками (Subscribe) реализовано через APIView.
 """
 
+from django.db import transaction
 from django.db.models import Count
 from drf_spectacular.utils import (
     extend_schema,
@@ -32,8 +33,9 @@ from rest_framework_bulk import BulkCreateModelMixin
 from aurora.models import Course, Lesson, Subscribe
 from aurora.paginators import CoursePagination, LessonPagination
 from aurora.serializers import CourseSerializer, LessonSerializer, SubscribeSerializer
-from users.permissions import IsModerPermission, IsOwnerPermission
+from aurora.services import process_course_update
 from aurora.tasks import send_subscription_email
+from users.permissions import IsModerPermission, IsOwnerPermission
 
 # Выносим повторяющиеся схемы ответов для читаемости кода
 COMMON_ERRORS = {
@@ -173,6 +175,14 @@ class CourseViewSet(ModelViewSet):
         """Автоматически назначает текущего пользователя автором курса при создании."""
         serializer.save(author=self.request.user)
 
+    def perform_update(self, serializer):
+        """Подключение сервисного слоя при обновлении курса."""
+        # Сохраняем изменения в БД
+        instance = serializer.save()
+        # Гарантируем, что Celery запустится ТОЛЬКО после успешного сохранения в БД
+        transaction.on_commit(
+            lambda: process_course_update(instance.id)
+        )
 
 # ============================ CRUD для Уроков через Generics ==========================================
 
