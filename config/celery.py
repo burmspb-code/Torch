@@ -21,6 +21,7 @@ app.conf.worker_hijack_root_logger = False
 # 4. Автоматически ищем файлы tasks.py в приложениях (например, в daily и users)
 app.autodiscover_tasks()
 
+
 # 5. Настраиваем логирование Celery через Django настройки при инициализации worker
 @worker_init.connect
 def config_loggers(*args, **kwargs):

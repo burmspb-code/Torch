@@ -2,6 +2,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -164,22 +165,22 @@ CELERY_TASK_TRACK_STARTED = True
 
 # Расписание для автономных задач
 CELERY_BEAT_SCHEDULE = {
-    # Название будильника (может быть любым уникальным текстом)
+    # 1. Задача из приложения aurora (проверка обновлений курсов)
     "check-course-updates-every-30-minutes": {
-
-        # ТОЧНЫЙ ПУТЬ до таски, оформленный в виде строки.
-        # Именно по этой строке Beat понимает, какую именно функцию вызвать!
         "task": "aurora.tasks.check_course_updates_beat_task",
-
-        # Периодичность запуска (в данном случае каждые 30 минут)
         "schedule": timedelta(minutes=30),
+    },
+    # 2. Задача из приложения users (блокировка неактивных пользователей)
+    "block-inactive-users-daily": {
+        "task": "users.tasks.block_inactive_users_beat_task",
+        "schedule": crontab(hour=2, minute=0),  # Каждый день в 02:00 ночи
     },
 }
 
 # ================== НАСТРОЙКИ отправки почтовых рассылок =======================
 
 # Временно комментируем SMTP и включаем вывод в консоль:
-#EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
 # Конфигурация SMTP Яндекс

@@ -33,10 +33,10 @@ class CourseAdmin(admin.ModelAdmin):
     search_fields = ("title", "description")
     inlines = [LessonInline]
 
-    readonly_fields = ('updated_at',)
+    readonly_fields = ("updated_at",)
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('author')
+        return super().get_queryset(request).select_related("author")
 
     def save_formset(self, request, form, formset, change):
         """Автоматическая привязка автора к урокам из инлайна."""
@@ -45,7 +45,6 @@ class CourseAdmin(admin.ModelAdmin):
             if isinstance(instance, Lesson) and not instance.author:
                 instance.author = request.user
             instance.save()
-
 
         # Сохраняем связи Many-to-Many, если они появятся в инлайнах в будущем
         formset.save_m2m()
@@ -60,11 +59,11 @@ class LessonAdmin(admin.ModelAdmin):
     list_filter = ("is_archived", "course", "author", "updated_at")
     search_fields = ("title", "description")
 
-    readonly_fields = ('updated_at',)
+    readonly_fields = ("updated_at",)
 
     def get_queryset(self, request):
         """Оптимизация запросов: жадная загрузка курса и автора."""
-        return super().get_queryset(request).select_related('course', 'author')
+        return super().get_queryset(request).select_related("course", "author")
 
     def save_model(self, request, obj, form, change):
         """Автоматическая привязка текущего пользователя в качестве автора урока."""
