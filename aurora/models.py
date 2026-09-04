@@ -64,6 +64,11 @@ class Course(models.Model):
         verbose_name="Автор",
         help_text="Укажите автора курса",
     )
+    updated_at = models.DateTimeField(
+        auto_now=True, verbose_name="Время последнего обновления"
+    )
+    # Флаг: отправлено ли уведомление по последним правкам
+    notification_sent = models.BooleanField(default=False)
 
     class Meta:
         """Настройки отображения модели в административной панели."""
@@ -84,6 +89,18 @@ class Course(models.Model):
                     "author": "При создании нового курса необходимо обязательно указать автора."
                 }
             )
+
+    def save(self, *args, **kwargs):
+        # Если курс обновляется (даже если обновился только его урок через update_fields),
+        # мы ОБЯЗАТЕЛЬНО сбрасываем флаг в False, так как контент изменился!
+        update_fields = kwargs.get("update_fields")
+
+        # Если мы принудительно сохраняем только флаг notification_sent (в таске Celery),
+        # то сбрасывать его в False не нужно. Во всех остальных случаях — сбрасываем.
+        if not update_fields or "notification_sent" not in update_fields:
+            self.notification_sent = False
+
+        super().save(*args, **kwargs)
 
     @property
     def price(self):
@@ -157,6 +174,11 @@ class Lesson(models.Model):
         verbose_name="Стоимость урока",
         help_text="Введите стоимость урока",
     )
+    updated_at = models.DateTimeField(
+        auto_now=True, verbose_name="Время последнего обновления"
+    )
+    # Флаг: отправлено ли уведомление по последним правкам
+    notification_sent = models.BooleanField(default=False)
 
     class Meta:
         """Настройки отображения модели в административной панели."""
@@ -177,6 +199,19 @@ class Lesson(models.Model):
                     "author": "При создании нового урока необходимо обязательно указать автора."
                 }
             )
+
+    def save(self, *args, **kwargs):
+        """Обновляем время обновления в связанных курсах."""
+        # Сначала сохраняем сам урок (обновится его updated_at)
+        super().save(*args, **kwargs)
+
+        # Проверяем, привязан ли урок к курсу
+        if (
+            self.course_id
+        ):  # Использование _id быстрее, так как не делает лишний запрос в БД
+            # Нам нужно обновить ТОЛЬКО время курса.
+            # update_fields заставит работать auto_now=True, но проигнорирует всё остальное.
+            self.course.save(update_fields=["updated_at"])
 
 
 class Subscribe(models.Model):

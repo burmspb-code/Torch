@@ -2,6 +2,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,7 +21,6 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -77,8 +77,6 @@ DATABASES = {
 }
 
 # Password validation
-# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -96,8 +94,6 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
-
 LANGUAGE_CODE = "ru-ru"
 
 TIME_ZONE = "Europe/Moscow"
@@ -142,10 +138,125 @@ SPECTACULAR_SETTINGS = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+# ===================== НАСТРОЙКИ CELERY И REDIS ================================
+
+# URL-адрес для подключения к Redis (брокер сообщений)
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
+
+# URL-адрес для хранения результатов выполнения задач в Redis
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+
+# Тайм-аут для хранения результатов задач в Redis (в секундандах - 1 день)
+CELERY_RESULT_EXPIRES = 86400
+
+# Часовой пояс для планировщика Celery (должен совпадать с Django)
+CELERY_TIMEZONE = TIME_ZONE  # Берём значение из переменной TIME_ZONE проекта
+
+# Включаем отслеживание запуска задач
+CELERY_TASK_TRACK_STARTED = True
+
+# Расписание для автономных задач
+CELERY_BEAT_SCHEDULE = {
+    # 1. Задача из приложения aurora (проверка обновлений курсов)
+    "check-course-updates-every-30-minutes": {
+        "task": "aurora.tasks.check_course_updates_beat_task",
+        "schedule": timedelta(minutes=30),
+    },
+    # 2. Задача из приложения users (блокировка неактивных пользователей)
+    "block-inactive-users-daily": {
+        "task": "users.tasks.block_inactive_users_beat_task",
+        "schedule": crontab(hour=2, minute=0),  # Каждый день в 02:00 ночи
+    },
+}
+
+# ================== НАСТРОЙКИ отправки почтовых рассылок =======================
+
+# Временно комментируем SMTP и включаем вывод в консоль:
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+# Конфигурация SMTP Яндекс
+EMAIL_HOST = "smtp.yandex.ru"
+EMAIL_PORT = 465  # Яндекс использует порт 465 для SSL
+EMAIL_USE_SSL = True  # Использование SSL вместо TLS (для Яндекса это надежнее)
+EMAIL_USE_TLS = False  # Отключаем TLS
+
+# Логин и пароль приложения почты
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+
+# 16-значный пароль приложения почты
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
+# Email отправителя по умолчанию
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
+
+# Email для получения уведомлений о просмотрах
+EMAIL_ADMIN_NOTIFICATION = os.getenv("EMAIL_ADMIN_NOTIFICATION")
+
+# ============================== ЛОГИРОВАНИЕ ПРОЕКТА ==============================
+
+# Убедимся, что папка для логов существует
+LOGS_DIR = Path(__file__).resolve().parent.parent / "logs"
+LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "[{asctime}] {levelname} [{name}]: {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": LOGS_DIR / "celery.log",
+            "maxBytes": 1024 * 1024 * 10,  # 10 MB
+            "backupCount": 5,
+            "formatter": "simple",
+            "encoding": "utf-8",
+        },
+        "console": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        # Отключаем лишние Django логи, чтобы они не спамили в консоль Celery
+        "django.utils.autoreload": {
+            "handlers": [],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": [],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        # Корневой логгер приложения (покрывает 'aurora', 'aurora.tasks', 'aurora.views' и т.д.)
+        "aurora": {
+            "handlers": ["file", "console"],
+            "level": "INFO",
+            "propagate": False,  # Запрещает передачу логов выше (например, в root логгер)
+        },
+        # Системные логи самого Celery (воркеры, хартбиты, коннекты к брокеру)
+        "celery": {
+            "handlers": ["file", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+# ==============================================================================

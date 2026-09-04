@@ -1,11 +1,15 @@
 import logging
-import stripe
-from stripe import StripeClient
-from django.db import transaction
+from datetime import timedelta
+from datetime import timezone
 
-from config.settings import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
-from users.models import Payments
+import stripe
+from django.db import transaction
+from django.utils import timezone
+from stripe import StripeClient
+
 from aurora.models import Subscribe
+from config.settings import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+from users.models import Payments, CustomUser
 
 logger = logging.getLogger(__name__)
 
@@ -161,3 +165,43 @@ class StripePaymentService:
         except stripe.StripeError as e:
             logger.error(f"Ошибка Stripe API при получении сессии: {e}")
             raise RuntimeError(f"Ошибка Stripe API при получении сессии: {str(e)}")
+
+
+class UserActivityService:
+    """Сервис для управления жизненным циклом и активностью пользователей."""
+
+    def __init__(self, inactivity_days: int = 30):
+        self.inactivity_days = inactivity_days
+        self.cutoff_date = timezone.now() - timedelta(days=self.inactivity_days)
+
+    def _get_inactive_users(self):
+        """Приватный метод: ищет пользователей по последней дате входа,
+        кроме администраторов и модераторов.
+        """
+        return CustomUser.objects.filter(
+            last_login__lt=self.cutoff_date, is_active=True
+        ).exclude(is_superuser=True, is_staff=True)
+
+    def _block_users(self, queryset) -> int:
+        """Приватный метод: блокирует переданный кверисет."""
+        count = queryset.count()
+        if count > 0:
+            queryset.update(is_active=False)
+        return count
+
+    def enable_blocking(self) -> int:
+        """Главная точка входа: запускает массовую блокировку."""
+        inactive_users = self._get_inactive_users()
+        return self._block_users(inactive_users)
+
+    @property
+    def is_monthly_user_activity(self):
+        """Определение месячной активновти пользователя.
+
+        Возвращает
+            True,  если пользователь логинился в течении месяца,
+            False, в противном случае.
+
+        """
+        one_month_ago = timezone.now() - timedelta(days=30)
+        return True if self.user.last_login >= one_month_ago else False
